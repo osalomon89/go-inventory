@@ -9,6 +9,21 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type Book struct {
+	Author string `json:"author" validate:"required"`
+	Title  string `json:"title"`
+	Price  int    `json:"price"`
+	Isbn   string `json:"isbn"`
+	Stock  int    `json:"stock"`
+}
+
+var books []Book
+
+type ResponseInfo struct {
+	Status int         `json:"status"`
+	Data   interface{} `json:"data"`
+}
+
 func main() {
 	router := mux.NewRouter()
 
@@ -16,8 +31,9 @@ func main() {
 
 	router.HandleFunc("/ping", ping).Methods("GET")
 	router.HandleFunc("/book/{id}", getBookByID).Methods("GET")
-	//router.HandleFunc("/books", getBookByID).Methods("POST")
 	router.HandleFunc("/books", getBooks).Methods("GET")
+	router.HandleFunc("/books", postBook).Methods("POST")
+	router.HandleFunc("/books", putBook).Methods("PUT")
 
 	log.Println("Server listening on port", port)
 
@@ -25,11 +41,6 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-}
-
-type ResponseInfo struct {
-	Status int    `json:"status"`
-	Data   string `json:"data"`
 }
 
 func ping(w http.ResponseWriter, r *http.Request) {
@@ -67,19 +78,46 @@ func getBookByID(w http.ResponseWriter, r *http.Request) {
 
 func getBooks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	code := r.URL.Query().Get("code")
-	name := r.URL.Query().Get("name")
+	author := r.URL.Query().Get("author")
+	if author != "" {
+		var sliceLibros []Book
+		for _, v := range books {
+			if v.Author == author {
+				sliceLibros = append(sliceLibros, v)
+			}
+		}
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: 200,
+			Data:   sliceLibros,
+		})
+		return
+	}
+	json.NewEncoder(w).Encode(ResponseInfo{
+		Status: 200,
+		Data:   books,
+	})
+}
 
-	if code == "" && name == "" {
+func postBook(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var b Book
+	err := json.NewDecoder(r.Body).Decode(&b)
+	if err != nil {
 		json.NewEncoder(w).Encode(ResponseInfo{
 			Status: http.StatusBadRequest,
 			Data:   "error",
 		})
 		return
 	}
-
+	books = append(books, b)
 	json.NewEncoder(w).Encode(ResponseInfo{
 		Status: 200,
-		Data:   "code: " + code + ". name: " + name,
+		Data:   b,
 	})
+
+}
+
+func putBook(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
 }
