@@ -10,12 +10,15 @@ import (
 )
 
 type Book struct {
+	Id     int    `id:"id"`
 	Author string `json:"author" validate:"required"`
 	Title  string `json:"title"`
 	Price  int    `json:"price"`
 	Isbn   string `json:"isbn"`
 	Stock  int    `json:"stock"`
 }
+
+var idBook int = 1
 
 var books []Book
 
@@ -26,7 +29,6 @@ type ResponseInfo struct {
 
 func main() {
 	router := mux.NewRouter()
-
 	const port string = ":8888"
 
 	router.HandleFunc("/ping", ping).Methods("GET")
@@ -109,6 +111,8 @@ func postBook(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	b.Id = idBook
+	idBook++
 	books = append(books, b)
 	json.NewEncoder(w).Encode(ResponseInfo{
 		Status: 200,
