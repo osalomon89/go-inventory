@@ -70,11 +70,17 @@ func getBookByID(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	var response Book
 
+	for _, v := range books {
+		if uint64(v.Id) == id {
+			response = v
+		}
+	}
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(ResponseInfo{
 		Status: http.StatusOK,
-		Data:   "id: " + idParam,
+		Data:   response,
 	})
 }
 
