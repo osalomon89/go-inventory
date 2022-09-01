@@ -35,7 +35,7 @@ func main() {
 	router.HandleFunc("/book/{id}", getBookByID).Methods("GET")
 	router.HandleFunc("/books", getBooks).Methods("GET")
 	router.HandleFunc("/books", postBook).Methods("POST")
-	router.HandleFunc("/books", putBook).Methods("PUT")
+	router.HandleFunc("/book/{id}", putBook).Methods("PUT")
 
 	log.Println("Server listening on port", port)
 
@@ -82,6 +82,7 @@ func getBookByID(w http.ResponseWriter, r *http.Request) {
 		Status: http.StatusOK,
 		Data:   response,
 	})
+
 }
 
 func getBooks(w http.ResponseWriter, r *http.Request) {
@@ -129,5 +130,42 @@ func postBook(w http.ResponseWriter, r *http.Request) {
 
 func putBook(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	param := mux.Vars(r)
+	idParam := param["id"]
+	var b Book
+
+	err := json.NewDecoder(r.Body).Decode(&b)
+	if err != nil {
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusBadRequest,
+			Data:   "error",
+		})
+		return
+	}
+
+	id, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil || id <= 0 {
+		w.WriteHeader(http.StatusBadRequest)
+
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusBadRequest,
+			Data:   "error " + idParam,
+		})
+		return
+	}
+	var response Book
+
+	for i, v := range books {
+		if uint64(v.Id) == id {
+			b.Id = v.Id
+			books[i] = b
+			response = books[i]
+		}
+	}
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(ResponseInfo{
+		Status: http.StatusOK,
+		Data:   response,
+	})
 
 }
