@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/osalomon89/go-inventory/server"
+	"github.com/osalomon89/go-inventory/internal/server"
 )
 
 func main() {

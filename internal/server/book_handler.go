@@ -6,20 +6,12 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/osalomon89/go-inventory/internal/domain"
 )
-
-type Book struct {
-	ID     uint   `json:"id"`
-	Author string `json:"author" validate:"required"`
-	Title  string `json:"title"`
-	Price  int    `json:"price"`
-	Isbn   string `json:"isbn"`
-	Stock  int    `json:"stock"`
-}
 
 var idBook int = 1
 
-var books []Book
+var books []domain.Book
 
 type ResponseInfo struct {
 	Status int         `json:"status"`
@@ -55,7 +47,7 @@ func (h *handler) getBookByID(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	var response Book
+	var response domain.Book
 
 	for _, v := range books {
 		if uint64(v.ID) == id {
@@ -63,7 +55,7 @@ func (h *handler) getBookByID(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if response == (Book{}) {
+	if response == (domain.Book{}) {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ResponseInfo{
 			Status: http.StatusBadRequest,
@@ -84,7 +76,7 @@ func (h *handler) getBooks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	author := r.URL.Query().Get("author")
 	if author != "" {
-		var sliceLibros []Book
+		var sliceLibros []domain.Book
 		for _, v := range books {
 			if v.Author == author {
 				sliceLibros = append(sliceLibros, v)
@@ -104,7 +96,7 @@ func (h *handler) getBooks(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) postBook(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	var b Book
+	var b domain.Book
 	err := json.NewDecoder(r.Body).Decode(&b)
 	if err != nil {
 		json.NewEncoder(w).Encode(ResponseInfo{
@@ -140,7 +132,7 @@ func (h *handler) putBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var b Book
+	var b domain.Book
 	err = json.NewDecoder(r.Body).Decode(&b)
 	if err != nil {
 		json.NewEncoder(w).Encode(ResponseInfo{
@@ -150,7 +142,7 @@ func (h *handler) putBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var response Book
+	var response domain.Book
 
 	for i, v := range books {
 		if uint64(v.ID) == id {
@@ -160,7 +152,7 @@ func (h *handler) putBook(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if response == (Book{}) {
+	if response == (domain.Book{}) {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ResponseInfo{
 			Status: http.StatusBadRequest,
