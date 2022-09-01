@@ -10,7 +10,7 @@ import (
 )
 
 type Book struct {
-	Id     int    `id:"id"`
+	ID     uint   `json:"id"`
 	Author string `json:"author" validate:"required"`
 	Title  string `json:"title"`
 	Price  int    `json:"price"`
@@ -32,10 +32,12 @@ func main() {
 	const port string = ":8888"
 
 	router.HandleFunc("/ping", ping).Methods("GET")
-	router.HandleFunc("/book/{id}", getBookByID).Methods("GET")
+
 	router.HandleFunc("/books", getBooks).Methods("GET")
 	router.HandleFunc("/books", postBook).Methods("POST")
-	router.HandleFunc("/book/{id}", putBook).Methods("PUT")
+	router.HandleFunc("/books/{id}", getBookByID).Methods("GET")
+	router.HandleFunc("/books/{id}", putBook).Methods("PUT")
+	router.HandleFunc("/books/{id}", deleteBook).Methods("DELETE")
 
 	log.Println("Server listening on port", port)
 
@@ -73,10 +75,20 @@ func getBookByID(w http.ResponseWriter, r *http.Request) {
 	var response Book
 
 	for _, v := range books {
-		if uint64(v.Id) == id {
+		if uint64(v.ID) == id {
 			response = v
 		}
 	}
+
+	if response == (Book{}) {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusBadRequest,
+			Data:   "El libro no existe",
+		})
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(ResponseInfo{
 		Status: http.StatusOK,
@@ -118,7 +130,8 @@ func postBook(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	b.Id = idBook
+
+	b.ID = uint(idBook)
 	idBook++
 	books = append(books, b)
 	json.NewEncoder(w).Encode(ResponseInfo{
@@ -132,16 +145,6 @@ func putBook(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	param := mux.Vars(r)
 	idParam := param["id"]
-	var b Book
-
-	err := json.NewDecoder(r.Body).Decode(&b)
-	if err != nil {
-		json.NewEncoder(w).Encode(ResponseInfo{
-			Status: http.StatusBadRequest,
-			Data:   "error",
-		})
-		return
-	}
 
 	id, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil || id <= 0 {
@@ -153,19 +156,68 @@ func putBook(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+
+	var b Book
+	err = json.NewDecoder(r.Body).Decode(&b)
+	if err != nil {
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusBadRequest,
+			Data:   "error",
+		})
+		return
+	}
+
 	var response Book
 
 	for i, v := range books {
-		if uint64(v.Id) == id {
-			b.Id = v.Id
+		if uint64(v.ID) == id {
+			b.ID = v.ID
 			books[i] = b
 			response = books[i]
 		}
 	}
+
+	if response == (Book{}) {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusBadRequest,
+			Data:   "El libro no existe",
+		})
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(ResponseInfo{
 		Status: http.StatusOK,
 		Data:   response,
 	})
+}
 
+func deleteBook(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	param := mux.Vars(r)
+	idParam := param["id"]
+
+	id, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil || id <= 0 {
+		w.WriteHeader(http.StatusBadRequest)
+
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusBadRequest,
+			Data:   "error " + idParam,
+		})
+		return
+	}
+
+	for i, v := range books {
+		if uint64(v.ID) == id {
+			books = append(books[:i], books[i+1:]...)
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(ResponseInfo{
+		Status: http.StatusOK,
+		Data:   "Libro eliminado. ID: " + idParam,
+	})
 }
