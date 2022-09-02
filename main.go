@@ -35,6 +35,7 @@ func main() {
 	router.HandleFunc("/books", getBooks).Methods("GET")
 	router.HandleFunc("/books", postBook).Methods("POST")
 	router.HandleFunc("/books/{id}", putBook).Methods("PUT")
+	router.HandleFunc("/books/{id}", deleteBook).Methods("DELETE")
 
 	log.Println("Server listening on port", port)
 
@@ -163,6 +164,35 @@ func putBook(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(ResponseInfo{
 				Status: http.StatusOK,
 				Data:   "actualización completa",
+			})
+			return
+		}
+	}
+
+}
+
+func deleteBook(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	param := mux.Vars(r)
+	id, err := strconv.Atoi(param["id"])
+
+	if err != nil || id <= 0 {
+		w.WriteHeader(http.StatusBadRequest)
+
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusBadRequest,
+			Data:   "error",
+		})
+		return
+	}
+
+	for i, v := range books {
+		if v.Id == id {
+			books = append(books[:i], books[i+1:]...)
+
+			json.NewEncoder(w).Encode(ResponseInfo{
+				Status: http.StatusOK,
+				Data:   "libro eliminado",
 			})
 			return
 		}
