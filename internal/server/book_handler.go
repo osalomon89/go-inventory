@@ -7,9 +7,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/osalomon89/go-inventory/internal/domain"
+	"github.com/osalomon89/go-inventory/internal/repositories"
 )
-
-var idBook int = 1
 
 var books []domain.Book
 
@@ -26,10 +25,14 @@ type Handler interface {
 	deleteBook(w http.ResponseWriter, r *http.Request)
 }
 
-type handler struct{}
+type handler struct {
+	repo repositories.BookRepository
+}
 
-func newHandler() Handler {
-	return &handler{}
+func newHandler(bookRepository repositories.BookRepository) Handler {
+	return &handler{
+		repo: bookRepository,
+	}
 }
 
 func (h *handler) getBookByID(w http.ResponseWriter, r *http.Request) {
@@ -47,15 +50,9 @@ func (h *handler) getBookByID(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	var response domain.Book
 
-	for _, v := range books {
-		if uint64(v.ID) == id {
-			response = v
-		}
-	}
-
-	if response == (domain.Book{}) {
+	result, err := h.repo.GetBookByID(uint(id))
+	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ResponseInfo{
 			Status: http.StatusBadRequest,
@@ -67,9 +64,8 @@ func (h *handler) getBookByID(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(ResponseInfo{
 		Status: http.StatusOK,
-		Data:   response,
+		Data:   result,
 	})
-
 }
 
 func (h *handler) getBooks(w http.ResponseWriter, r *http.Request) {
@@ -106,14 +102,20 @@ func (h *handler) postBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b.ID = uint(idBook)
-	idBook++
-	books = append(books, b)
+	err = h.repo.CreateBook(&b)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusInternalServerError,
+			Data:   err,
+		})
+		return
+	}
+
 	json.NewEncoder(w).Encode(ResponseInfo{
 		Status: 200,
 		Data:   b,
 	})
-
 }
 
 func (h *handler) putBook(w http.ResponseWriter, r *http.Request) {

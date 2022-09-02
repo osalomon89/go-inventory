@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/osalomon89/go-inventory/internal/repositories"
 )
 
 type HTTPRouter interface {
@@ -27,7 +28,14 @@ func (r *httpRouter) SetupRouter() *mux.Router {
 
 	router.HandleFunc("/ping", ping).Methods("GET")
 
-	bookHandler := newHandler()
+	dbConn, err := repositories.GetConnectionDB()
+	if err != nil {
+		panic("error db")
+	}
+
+	bookRepository := repositories.NewBookRepository(dbConn)
+
+	bookHandler := newHandler(bookRepository)
 
 	router.HandleFunc("/books", bookHandler.getBooks).Methods("GET")
 	router.HandleFunc("/books", bookHandler.postBook).Methods("POST")
