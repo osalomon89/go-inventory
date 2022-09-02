@@ -34,8 +34,8 @@ func main() {
 	router.HandleFunc("/book/{id}", getBookByID).Methods("GET")
 	router.HandleFunc("/books", getBooks).Methods("GET")
 	router.HandleFunc("/books", postBook).Methods("POST")
-	router.HandleFunc("/books/{id}", putBook).Methods("PUT")
-	router.HandleFunc("/books/{id}", deleteBook).Methods("DELETE")
+	router.HandleFunc("/book/{id}", putBook).Methods("PUT")
+	router.HandleFunc("/book/{id}", deleteBook).Methods("DELETE")
 
 	log.Println("Server listening on port", port)
 
@@ -197,5 +197,11 @@ func deleteBook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(ResponseInfo{
+		Status: http.StatusBadRequest,
+		Data:   "libro no encontrado",
+	})
 
 }
