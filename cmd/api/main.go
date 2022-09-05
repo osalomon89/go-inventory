@@ -3,16 +3,18 @@ package main
 import (
 	"log"
 
-	"github.com/osalomon89/go-inventory/server"
+	"github.com/osalomon89/go-inventory/internal/server"
 )
 
 func main() {
 	const port string = ":8888"
-	router := server.SetupRouter()
+	httpServer := server.NewHTTPRouter(port)
+
+	router := httpServer.SetupRouter()
 
 	log.Println("Server listening on port", port)
 
-	err := server.Run(port, router)
+	err := httpServer.Run(router)
 	if err != nil {
 		log.Fatalln(err)
 	}
