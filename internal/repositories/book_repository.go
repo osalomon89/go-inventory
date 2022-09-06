@@ -11,6 +11,7 @@ import (
 type BookRepository interface {
 	GetBookByID(id uint) (*domain.Book, error)
 	CreateBook(book *domain.Book) error
+	UpdateBookByParams(id uint, params map[string]interface{}, book *domain.Book) error
 }
 
 type bookRepository struct {
@@ -52,4 +53,37 @@ func (repo *bookRepository) CreateBook(book *domain.Book) error {
 	book.ID = uint(id)
 
 	return nil
+}
+
+func (repo *bookRepository) UpdateBookByParams(id uint,
+	params map[string]interface{}, book *domain.Book) error {
+	updateAt := time.Now()
+
+	setParams, setValues := repo.getSetParams(params, updateAt)
+	query := fmt.Sprintf("UPDATE books SET %s WHERE id=?", setParams)
+	setValues = append(setValues, id)
+
+	_, err := repo.conn.Exec(query, setValues...)
+
+	if err != nil {
+		return fmt.Errorf("error saving item: %w", err)
+	}
+
+	book.UpdatedAt = updateAt
+
+	return nil
+}
+
+func (repo *bookRepository) getSetParams(params map[string]interface{},
+	updateAt time.Time) (string, []interface{}) {
+	setParams := "updated_at=?"
+	var setValues []interface{}
+	setValues = append(setValues, updateAt)
+
+	for key, val := range params {
+		setParams = fmt.Sprintf("%s, %s=?", setParams, key)
+		setValues = append(setValues, val)
+	}
+
+	return setParams, setValues
 }
