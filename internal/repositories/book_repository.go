@@ -1,24 +1,19 @@
-package main
+package repositories
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/osalomon89/go-inventory/internal/domain"
 )
 
-type Book struct {
-	ID     int    `json:"id"`
-	Author string `json:"author" validate:"required"`
-	Title  string `json:"title"`
-	Price  int    `json:"price"`
-	Isbn   string `json:"isbn"`
-	Stock  int    `json:"stock"`
+type BookRepository interface {
+	GetBooks() []domain.Book
 }
 
-var books []Book
+var books []domain.Book
 var id_global int = 0
 
 type ResponseInfo struct {
@@ -26,35 +21,7 @@ type ResponseInfo struct {
 	Data   interface{} `json:"data"`
 }
 
-func main() {
-	router := mux.NewRouter()
-
-	const port string = ":8888"
-
-	router.HandleFunc("/ping", ping).Methods("GET")
-	router.HandleFunc("/books/{id}", getBookByID).Methods("GET")
-	router.HandleFunc("/books", getBooks).Methods("GET")
-	router.HandleFunc("/books", postBook).Methods("POST")
-	router.HandleFunc("/books/{id}", putBook).Methods("PUT")
-	router.HandleFunc("/books/{id}", deleteBook).Methods("DELETE")
-
-	log.Println("Server listening on port", port)
-
-	err := http.ListenAndServe(port, router)
-	if err != nil {
-		log.Fatalln(err)
-	}
-}
-func ping(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	json.NewEncoder(w).Encode(ResponseInfo{
-		Status: http.StatusOK,
-		Data:   "pong",
-	})
-}
-func getBookByID(w http.ResponseWriter, r *http.Request) {
+func GetBookByID(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	param := mux.Vars(r)
 	id, err := strconv.Atoi(param["id"])
@@ -68,8 +35,8 @@ func getBookByID(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	var libro Book
-	libroVacio := Book{}
+	var libro domain.Book
+	libroVacio := domain.Book{}
 	for _, v := range books {
 		if v.ID == id {
 			libro = v
@@ -91,11 +58,11 @@ func getBookByID(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func getBooks(w http.ResponseWriter, r *http.Request) {
+func GetBooks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	author := r.URL.Query().Get("author")
 	if author != "" {
-		var sliceLibros []Book
+		var sliceLibros []domain.Book
 		for _, v := range books {
 			if v.Author == author {
 				sliceLibros = append(sliceLibros, v)
@@ -113,9 +80,9 @@ func getBooks(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func postBook(w http.ResponseWriter, r *http.Request) {
+func PostBook(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	var b Book
+	var b domain.Book
 	err := json.NewDecoder(r.Body).Decode(&b) //recibe la info
 	if err != nil {
 		json.NewEncoder(w).Encode(ResponseInfo{ //envia la info
@@ -134,17 +101,24 @@ func postBook(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func putBook(w http.ResponseWriter, r *http.Request) {
+func PutBook(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	param := mux.Vars(r)
 	id, err := strconv.Atoi(param["id"])
-	var updateBook Book
+	var updateBook domain.Book
 	erro := json.NewDecoder(r.Body).Decode(&updateBook)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ResponseInfo{
 			Status: http.StatusBadRequest,
 			Data:   "Error: Libro no encontrado",
+		})
+		return
+	}
+	if erro != nil {
+		json.NewEncoder(w).Encode(ResponseInfo{ //envia la info
+			Status: http.StatusBadRequest,
+			Data:   "error",
 		})
 		return
 	}
@@ -156,20 +130,13 @@ func putBook(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if erro != nil {
-		json.NewEncoder(w).Encode(ResponseInfo{ //envia la info
-			Status: http.StatusBadRequest,
-			Data:   "error",
-		})
-		return
-	}
 	json.NewEncoder(w).Encode(ResponseInfo{
 		Status: http.StatusAccepted,
 		Data:   "Libro actualizado",
 	})
 
 }
-func deleteBook(w http.ResponseWriter, r *http.Request) {
+func DeleteBook(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	param := mux.Vars(r)
 	id, err := strconv.Atoi(param["id"])
@@ -182,8 +149,8 @@ func deleteBook(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	var libro Book
-	libroVacio := Book{}
+	var libro domain.Book
+	libroVacio := domain.Book{}
 	for i, v := range books {
 		if v.ID == id {
 			libro = v
