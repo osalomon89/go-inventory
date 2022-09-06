@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -11,7 +12,7 @@ import (
 type BookRepository interface {
 	GetBookByID(id uint) (*domain.Book, error)
 	CreateBook(book *domain.Book) error
-	UpdateBookByParams(id uint, params map[string]interface{}, book *domain.Book) error
+	UpdateBookByParams(id uint, book *domain.Book) error
 }
 
 type bookRepository struct {
@@ -55,18 +56,23 @@ func (repo *bookRepository) CreateBook(book *domain.Book) error {
 	return nil
 }
 
-func (repo *bookRepository) UpdateBookByParams(id uint,
-	params map[string]interface{}, book *domain.Book) error {
+func (repo *bookRepository) UpdateBookByParams(id uint, book *domain.Book) error {
 	updateAt := time.Now()
 
-	setParams, setValues := repo.getSetParams(params, updateAt)
-	query := fmt.Sprintf("UPDATE books SET %s WHERE id=?", setParams)
-	setValues = append(setValues, id)
+	query, args := repo.patchMyResource(book)
 
-	_, err := repo.conn.Exec(query, setValues...)
-
+	result, err := repo.conn.Exec(query, args...)
 	if err != nil {
-		return fmt.Errorf("error saving item: %w", err)
+		return fmt.Errorf("error updating book: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error getting rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("the book does not exist: %w", err)
 	}
 
 	book.UpdatedAt = updateAt
@@ -74,16 +80,44 @@ func (repo *bookRepository) UpdateBookByParams(id uint,
 	return nil
 }
 
-func (repo *bookRepository) getSetParams(params map[string]interface{},
-	updateAt time.Time) (string, []interface{}) {
-	setParams := "updated_at=?"
-	var setValues []interface{}
-	setValues = append(setValues, updateAt)
+func (repo *bookRepository) patchMyResource(book *domain.Book) (string, []interface{}) {
+	q := `UPDATE books SET `
+	qParts := make([]string, 0, 2)
+	args := make([]interface{}, 0, 2)
+	updateAt := time.Now()
 
-	for key, val := range params {
-		setParams = fmt.Sprintf("%s, %s=?", setParams, key)
-		setValues = append(setValues, val)
+	qParts = append(qParts, `updated_at=?`)
+	args = append(args, updateAt)
+
+	if book.Author != "" {
+		qParts = append(qParts, `author=?`)
+		args = append(args, book.Author)
 	}
 
-	return setParams, setValues
+	if book.Title != "" {
+		qParts = append(qParts, `title = ?`)
+		args = append(args, book.Title)
+	}
+
+	if book.Price != 0 {
+		qParts = append(qParts, `price = ?`)
+		args = append(args, book.Price)
+	}
+
+	if book.Isbn != "" {
+		qParts = append(qParts, `isbn = ?`)
+		args = append(args, book.Isbn)
+	}
+
+	if book.Stock != 0 {
+		qParts = append(qParts, `stock = ?`)
+		args = append(args, book.Stock)
+	}
+
+	q += strings.Join(qParts, ",") + ` WHERE id = ?`
+	args = append(args, book.ID)
+
+	book.UpdatedAt = updateAt
+
+	return q, args
 }

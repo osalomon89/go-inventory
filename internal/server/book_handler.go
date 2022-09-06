@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -188,16 +187,6 @@ func (h *handler) updateBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	foundBook, err := h.repo.GetBookByID(uint(id))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ResponseInfo{
-			Status: http.StatusBadRequest,
-			Data:   fmt.Sprintf("the book you are trying to modify does not exist. ID: %s", idParam),
-		})
-		return
-	}
-
 	bookRequestBody := new(domain.Book)
 	err = json.NewDecoder(r.Body).Decode(bookRequestBody)
 	if err != nil {
@@ -208,10 +197,9 @@ func (h *handler) updateBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	paramsToUpdate := getParamsToUpdate(bookRequestBody, foundBook)
+	bookRequestBody.ID = uint(id)
 
-	err = h.repo.UpdateBookByParams(uint(id), paramsToUpdate, foundBook)
-
+	err = h.repo.UpdateBookByParams(uint(id), bookRequestBody)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ResponseInfo{
@@ -224,39 +212,8 @@ func (h *handler) updateBook(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(ResponseInfo{
 		Status: http.StatusOK,
-		Data:   foundBook,
+		Data:   bookRequestBody,
 	})
-}
-
-func getParamsToUpdate(bookRequestBody, foundBook *domain.Book) map[string]interface{} {
-	paramsToUpdate := make(map[string]interface{})
-
-	if bookRequestBody.Author != "" && bookRequestBody.Author != foundBook.Author {
-		paramsToUpdate["author"] = bookRequestBody.Author
-		foundBook.Author = bookRequestBody.Author
-	}
-
-	if bookRequestBody.Title != "" && bookRequestBody.Title != foundBook.Title {
-		paramsToUpdate["title"] = bookRequestBody.Title
-		foundBook.Title = bookRequestBody.Title
-	}
-
-	if bookRequestBody.Price != 0 && bookRequestBody.Price != foundBook.Price {
-		paramsToUpdate["price"] = bookRequestBody.Price
-		foundBook.Price = bookRequestBody.Price
-	}
-
-	if bookRequestBody.Isbn != "" && bookRequestBody.Isbn != foundBook.Isbn {
-		paramsToUpdate["isbn"] = bookRequestBody.Isbn
-		foundBook.Isbn = bookRequestBody.Isbn
-	}
-
-	if bookRequestBody.Stock != 0 && bookRequestBody.Stock != foundBook.Stock {
-		paramsToUpdate["stock"] = bookRequestBody.Stock
-		foundBook.Stock = bookRequestBody.Stock
-	}
-
-	return paramsToUpdate
 }
 
 func (h *handler) deleteBook(w http.ResponseWriter, r *http.Request) {
