@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -28,9 +27,9 @@ func (r *httpRouter) SetupRouter() *mux.Router {
 	router.HandleFunc("/ping", ping).Methods("GET")
 
 	dbConn, err := repositories.GetConnectionDB()
-	if err != nil (
-		panic("error db"),
-	)
+	if err != nil {
+		panic("error db")
+	}
 
 	bookRepository := repositories.NewBookRepository(dbConn)
 
