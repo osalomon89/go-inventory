@@ -80,6 +80,7 @@ func (h *handler) getBookByID(w http.ResponseWriter, r *http.Request) {
 			Status: http.StatusBadRequest,
 			Data:   "libro no encontrado",
 		})
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -91,7 +92,7 @@ func (h *handler) getBookByID(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) getBooks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	author := r.URL.Query().Get("author")
+	/*author := r.URL.Query().Get("author")
 
 	if author != "" {
 		var sliceLibros []domain.Book
@@ -105,11 +106,21 @@ func (h *handler) getBooks(w http.ResponseWriter, r *http.Request) {
 			Data:   sliceLibros,
 		})
 		return
+	}*/
+
+	result, err := h.repo.GetBook()
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusBadRequest,
+			Data:   "libro no encontrado",
+		})
+		return
 	}
 
 	json.NewEncoder(w).Encode(ResponseInfo{
 		Status: 200,
-		Data:   books,
+		Data:   result,
 	})
 }
 
@@ -169,11 +180,6 @@ func (h *handler) patchBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	/*switch {
-	case :
-
-	}*/
-
 }
 
 func (h *handler) putBook(w http.ResponseWriter, r *http.Request) {
@@ -202,6 +208,16 @@ func (h *handler) putBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	erro := h.repo.UpdateBook(id, &newAtrib)
+	if erro != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusInternalServerError,
+			Data:   erro,
+		})
+		return
+	}
+
 	for i, v := range books {
 		if v.Id == id {
 			books = append(books[:i], books[i+1:]...)
@@ -216,6 +232,10 @@ func (h *handler) putBook(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	json.NewEncoder(w).Encode(ResponseInfo{
+		Status: http.StatusOK,
+		Data:   "actualización completa",
+	})
 }
 
 func (h *handler) deleteBook(w http.ResponseWriter, r *http.Request) {
@@ -233,7 +253,7 @@ func (h *handler) deleteBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for i, v := range books {
+	/*for i, v := range books {
 		if v.Id == id {
 			books = append(books[:i], books[i+1:]...)
 
@@ -243,12 +263,20 @@ func (h *handler) deleteBook(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
+	}*/
+
+	error := h.repo.DeleteBook(id)
+	if error != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusBadRequest,
+			Data:   "libro no encontrado",
+		})
+		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(ResponseInfo{
-		Status: http.StatusBadRequest,
-		Data:   "libro no encontrado",
+		Status: http.StatusOK,
+		Data:   "libro eliminado",
 	})
-
 }

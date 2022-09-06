@@ -11,6 +11,9 @@ import (
 type BookRepository interface {
 	GetBookByID(id int) (*domain.Book, error)
 	CreateBook(book *domain.Book) error
+	GetBook() ([]domain.Book, error)
+	UpdateBook(id int, book *domain.Book) error
+	DeleteBook(id int) error
 }
 
 type bookRepository struct {
@@ -49,6 +52,45 @@ func (repo *bookRepository) CreateBook(book *domain.Book) error {
 	}
 
 	book.Id = int(id)
+
+	return nil
+}
+
+func (repo *bookRepository) GetBook() ([]domain.Book, error) {
+	books := []domain.Book{}
+
+	err := repo.conn.Select(&books, "SELECT * FROM books")
+	if err != nil {
+		return nil, fmt.Errorf("error getting books: %w", err)
+	}
+	return books, nil
+
+}
+
+func (repo *bookRepository) UpdateBook(id int, book *domain.Book) error {
+	updatedAt := time.Now()
+
+	result, err := repo.conn.Exec(`UPDATE books SET title=?, author=?, price=?, stock=?, isbn=?, 
+	updated_at=? WHERE id=?`, book.Title, book.Author, book.Price, book.Stock, book.Isbn,
+		updatedAt, id)
+
+	if err != nil {
+		return fmt.Errorf("error insering book: %w", err)
+	}
+
+	fmt.Println(result)
+
+	return nil
+}
+
+func (repo *bookRepository) DeleteBook(id int) error {
+	result, err := repo.conn.Exec(`DELETE FROM books WHERE id=?`, id)
+
+	if err != nil {
+		return fmt.Errorf("error deleting book: %w", err)
+	}
+
+	fmt.Println(result)
 
 	return nil
 }
