@@ -7,10 +7,12 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/schema"
 	"github.com/osalomon89/go-inventory/internal/domain"
 	"github.com/osalomon89/go-inventory/internal/repositories"
 )
 
+var decoder = schema.NewDecoder()
 var books []domain.Book
 
 type ResponseInfo struct {
@@ -70,25 +72,64 @@ func (h *handler) getBookByID(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type BookRequestQuery struct {
+	Author    string `json:"author"`
+	Title     string `json:"title"`
+	Isbn      string `json:"isbn"`
+	Limit     int    `json:"limit"`
+	Offset    int    `json:"offset"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
 func (h *handler) getBooks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	author := r.URL.Query().Get("author")
-	if author != "" {
-		var sliceLibros []domain.Book
-		for _, v := range books {
-			if v.Author == author {
-				sliceLibros = append(sliceLibros, v)
-			}
-		}
+	bookRequestQuery := new(BookRequestQuery)
+	err := decoder.Decode(bookRequestQuery, r.URL.Query())
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ResponseInfo{
-			Status: 200,
-			Data:   sliceLibros,
+			Status: http.StatusBadRequest,
+			Data:   "El libro no existe",
 		})
 		return
 	}
+
+	bookRequestQueryString, err := json.Marshal(bookRequestQuery)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusInternalServerError,
+			Data:   err,
+		})
+		return
+	}
+
+	var params map[string]interface{}
+	err = json.Unmarshal(bookRequestQueryString, &params)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusInternalServerError,
+			Data:   err,
+		})
+		return
+	}
+
+	booksResult, err := h.repo.GetBooks(params)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusBadRequest,
+			Data:   "El libro no existe",
+		})
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(ResponseInfo{
 		Status: 200,
-		Data:   books,
+		Data:   booksResult,
 	})
 }
 
