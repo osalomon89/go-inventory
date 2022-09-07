@@ -23,6 +23,7 @@ type Handler interface {
 	postBook(w http.ResponseWriter, r *http.Request)
 	putBook(w http.ResponseWriter, r *http.Request)
 	deleteBook(w http.ResponseWriter, r *http.Request)
+	updateBook(w http.ResponseWriter, r *http.Request)
 }
 
 type handler struct {
@@ -123,19 +124,9 @@ func (h *handler) putBook(w http.ResponseWriter, r *http.Request) {
 	param := mux.Vars(r)
 	idParam := param["id"]
 
-	id, err := strconv.ParseUint(idParam, 10, 32)
-	if err != nil || id <= 0 {
-		w.WriteHeader(http.StatusBadRequest)
-
-		json.NewEncoder(w).Encode(ResponseInfo{
-			Status: http.StatusBadRequest,
-			Data:   "error " + idParam,
-		})
-		return
-	}
-
+	id, _ := strconv.ParseUint(idParam, 10, 32)
 	var b domain.Book
-	err = json.NewDecoder(r.Body).Decode(&b)
+	err := json.NewDecoder(r.Body).Decode(&b)
 	if err != nil {
 		json.NewEncoder(w).Encode(ResponseInfo{
 			Status: http.StatusBadRequest,
@@ -143,30 +134,20 @@ func (h *handler) putBook(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	var response domain.Book
-
-	for i, v := range books {
-		if uint64(v.ID) == id {
-			b.ID = v.ID
-			books[i] = b
-			response = books[i]
-		}
-	}
-
-	if response == (domain.Book{}) {
-		w.WriteHeader(http.StatusBadRequest)
+	b.ID = uint(id)
+	err = h.repo.UpdateBook(uint(id), &b)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(ResponseInfo{
-			Status: http.StatusBadRequest,
-			Data:   "El libro no existe",
+			Status: http.StatusInternalServerError,
+			Data:   err,
 		})
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(ResponseInfo{
-		Status: http.StatusOK,
-		Data:   response,
+		Status: 200,
+		Data:   b,
 	})
 }
 
@@ -196,5 +177,50 @@ func (h *handler) deleteBook(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(ResponseInfo{
 		Status: http.StatusOK,
 		Data:   "Libro eliminado. ID: " + idParam,
+	})
+}
+
+func (h *handler) updateBook(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	param := mux.Vars(r)
+	idParam := param["id"]
+
+	id, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil || id <= 0 {
+		w.WriteHeader(http.StatusBadRequest)
+
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusBadRequest,
+			Data:   "error " + idParam,
+		})
+		return
+	}
+
+	bookRequestBody := new(domain.Book)
+	err = json.NewDecoder(r.Body).Decode(bookRequestBody)
+	if err != nil {
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusBadRequest,
+			Data:   "error decoding request body",
+		})
+		return
+	}
+
+	bookRequestBody.ID = uint(id)
+
+	err = h.repo.UpdateBookByParams(uint(id), bookRequestBody)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusBadRequest,
+			Data:   "El libro no existe",
+		})
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(ResponseInfo{
+		Status: http.StatusOK,
+		Data:   bookRequestBody,
 	})
 }
