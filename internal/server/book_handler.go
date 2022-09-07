@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -22,6 +23,7 @@ type Handler interface {
 	getBooks(w http.ResponseWriter, r *http.Request)
 	postBook(w http.ResponseWriter, r *http.Request)
 	putBook(w http.ResponseWriter, r *http.Request)
+	updateBook(w http.ResponseWriter, r *http.Request)
 	deleteBook(w http.ResponseWriter, r *http.Request)
 }
 
@@ -167,6 +169,59 @@ func (h *handler) putBook(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(ResponseInfo{
 		Status: http.StatusOK,
 		Data:   response,
+	})
+}
+
+func (h *handler) updateBook(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	param := mux.Vars(r)
+	idParam := param["id"]
+
+	id, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil || id <= 0 {
+		w.WriteHeader(http.StatusBadRequest)
+
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusBadRequest,
+			Data:   "error " + idParam,
+		})
+		return
+	}
+
+	foundBook, err := h.repo.GetBookByID(uint(id))
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusBadRequest,
+			Data:   fmt.Sprintf("the book you are trying to modify does not exist. ID: %s", idParam),
+		})
+		return
+	}
+
+	bookRequestBody := make(map[string]interface{})
+	err = json.NewDecoder(r.Body).Decode(&bookRequestBody)
+	if err != nil {
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusBadRequest,
+			Data:   "error decoding request body",
+		})
+		return
+	}
+
+	err = h.repo.UpdateBookByParams(uint(id), bookRequestBody, foundBook)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusBadRequest,
+			Data:   "El libro no existe",
+		})
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(ResponseInfo{
+		Status: http.StatusOK,
+		Data:   foundBook,
 	})
 }
 

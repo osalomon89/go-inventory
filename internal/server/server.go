@@ -41,6 +41,7 @@ func (r *httpRouter) SetupRouter() *mux.Router {
 	router.HandleFunc("/books", bookHandler.postBook).Methods("POST")
 	router.HandleFunc("/books/{id}", bookHandler.getBookByID).Methods("GET")
 	router.HandleFunc("/books/{id}", bookHandler.putBook).Methods("PUT")
+	router.HandleFunc("/books/{id}", bookHandler.updateBook).Methods("PATCH")
 	router.HandleFunc("/books/{id}", bookHandler.deleteBook).Methods("DELETE")
 
 	return router
