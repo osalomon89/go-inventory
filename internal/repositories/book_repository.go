@@ -1,7 +1,9 @@
 package repositories
 
 import (
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -13,6 +15,7 @@ type BookRepository interface {
 	CreateBook(book *domain.Book) error
 	GetBook() ([]domain.Book, error)
 	UpdateBook(id int, book *domain.Book) error
+	UpdateBookByParams(id int, params map[string]interface{}, book *domain.Book) error
 	DeleteBook(id int) error
 }
 
@@ -81,6 +84,52 @@ func (repo *bookRepository) UpdateBook(id int, book *domain.Book) error {
 	fmt.Println(result)
 
 	return nil
+}
+
+func (repo *bookRepository) UpdateBookByParams(id int, params map[string]interface{}, book *domain.Book) error {
+	updatedAt := time.Now()
+
+	params["updated_at"] = updatedAt
+	//paso los datos a bytes
+	ja, err := json.Marshal(params)
+	if err != nil {
+		return fmt.Errorf("error marshalling book: %w", err)
+	}
+	//los convierte en struct
+	err = json.Unmarshal(ja, book)
+	if err != nil {
+		return fmt.Errorf("error unmarshalling book: %w", err)
+	}
+
+	setParams, setValues := repo.getStatementParams(params)
+
+	query := fmt.Sprintf("UPDATE books SET %s WHERE id=?", setParams)
+	setValues = append(setValues, id)
+
+	result, err := repo.conn.Exec(query, setValues...)
+
+	if err != nil {
+		return fmt.Errorf("error updating item: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error updating item: %w%d", err, rowsAffected)
+	}
+
+	return nil
+}
+
+func (repo *bookRepository) getStatementParams(params map[string]interface{}) (string, []interface{}) {
+	var setParams []string
+	var setValues []interface{}
+
+	for key, val := range params {
+		setParams = append(setParams, fmt.Sprintf("%s=?", key))
+		setValues = append(setValues, val)
+	}
+
+	return strings.Join(setParams, ","), setValues
 }
 
 func (repo *bookRepository) DeleteBook(id int) error {

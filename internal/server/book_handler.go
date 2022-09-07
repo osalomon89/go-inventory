@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -159,8 +160,6 @@ func (h *handler) patchBook(w http.ResponseWriter, r *http.Request) {
 	param := mux.Vars(r)
 	id, err := strconv.Atoi(param["id"])
 
-	var newAtrib domain.Book
-
 	if err != nil || id <= 0 {
 		w.WriteHeader(http.StatusBadRequest)
 
@@ -171,14 +170,41 @@ func (h *handler) patchBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	error := json.NewDecoder(r.Body).Decode(&newAtrib)
-	if error != nil {
+	foundBook, err := h.repo.GetBookByID(id)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ResponseInfo{
 			Status: http.StatusBadRequest,
-			Data:   "error",
+			Data:   fmt.Sprintf("the book you are trying to modify does not exist. ID: %v", id),
 		})
 		return
 	}
+
+	bookRequestBody := make(map[string]interface{})
+	err = json.NewDecoder(r.Body).Decode(&bookRequestBody)
+	if err != nil {
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusBadRequest,
+			Data:   "error decoding request body",
+		})
+		return
+	}
+
+	err = h.repo.UpdateBookByParams(id, bookRequestBody, foundBook)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusBadRequest,
+			Data:   "El libro no existe",
+		})
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(ResponseInfo{
+		Status: http.StatusOK,
+		Data:   foundBook,
+	})
 
 }
 
