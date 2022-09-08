@@ -1,174 +1,66 @@
 package repositories
 
 import (
-	"encoding/json"
-	"net/http"
-	"strconv"
+	"fmt"
+	"time"
 
-	"github.com/gorilla/mux"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
 	"github.com/osalomon89/go-inventory/internal/domain"
 )
 
 type BookRepository interface {
-	GetBooks() []domain.Book
+	GetBooksById(id uint) (*domain.Book, error)
+	CreateBook(*domain.Book) error
+	GetBooks() ([]domain.Book, error)
+	UpdateBook(int, *domain.Book) error
 }
 
-var books []domain.Book
-var id_global int = 0
-
-type ResponseInfo struct {
-	Status int         `json:"status"`
-	Data   interface{} `json:"data"`
+type bookRepository struct {
+	conn *sqlx.DB
 }
 
-func GetBookByID(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	param := mux.Vars(r)
-	id, err := strconv.Atoi(param["id"])
-
-	if err != nil || id <= 0 {
-		w.WriteHeader(http.StatusBadRequest)
-
-		json.NewEncoder(w).Encode(ResponseInfo{
-			Status: http.StatusBadRequest,
-			Data:   id,
-		})
-		return
+func NewBookRepository(db *sqlx.DB) BookRepository {
+	return &bookRepository{
+		conn: db,
 	}
-	var libro domain.Book
-	libroVacio := domain.Book{}
-	for _, v := range books {
-		if v.ID == id {
-			libro = v
-		}
-	}
-	if libro == libroVacio {
-		w.WriteHeader(http.StatusBadRequest)
-
-		json.NewEncoder(w).Encode(ResponseInfo{
-			Status: http.StatusBadRequest,
-			Data:   "Libro no encontrado",
-		})
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(ResponseInfo{
-		Status: http.StatusOK,
-		Data:   libro,
-	})
 }
 
-func GetBooks(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	author := r.URL.Query().Get("author")
-	if author != "" {
-		var sliceLibros []domain.Book
-		for _, v := range books {
-			if v.Author == author {
-				sliceLibros = append(sliceLibros, v)
-			}
-		}
-		json.NewEncoder(w).Encode(ResponseInfo{
-			Status: 200,
-			Data:   sliceLibros,
-		})
-		return
-	}
-	json.NewEncoder(w).Encode(ResponseInfo{
-		Status: 200,
-		Data:   books,
-	})
-}
-
-func PostBook(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	var b domain.Book
-	err := json.NewDecoder(r.Body).Decode(&b) //recibe la info
+func (repo *bookRepository) GetBooksById(id uint) (*domain.Book, error) {
+	book := new(domain.Book)
+	err := repo.conn.Get(book, "SELECT * FROM books WHERE id=?", id)
 	if err != nil {
-		json.NewEncoder(w).Encode(ResponseInfo{ //envia la info
-			Status: http.StatusBadRequest,
-			Data:   "error",
-		})
-		return
+		return nil, fmt.Errorf("error getting book: %w", &err)
 	}
-	id_global++
-	b.ID = id_global
-	books = append(books, b)
-	json.NewEncoder(w).Encode(ResponseInfo{
-		Status: 200,
-		Data:   b,
-	})
-
+	return book, nil
 }
-
-func PutBook(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	param := mux.Vars(r)
-	id, err := strconv.Atoi(param["id"])
-	var updateBook domain.Book
-	erro := json.NewDecoder(r.Body).Decode(&updateBook)
+func (repo *bookRepository) GetBooks() ([]domain.Book, error) {
+	var libros []domain.Book
+	err := repo.conn.Select(libros, "SELECT * FROM books")
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ResponseInfo{
-			Status: http.StatusBadRequest,
-			Data:   "Error: Libro no encontrado",
-		})
-		return
+		return nil, fmt.Errorf("error gettings books: %w", &err)
 	}
-	if erro != nil {
-		json.NewEncoder(w).Encode(ResponseInfo{ //envia la info
-			Status: http.StatusBadRequest,
-			Data:   "error",
-		})
-		return
-	}
-	for i, v := range books {
-		if v.ID == id {
-			books = append(books[:i], books[i+1:]...)
-			updateBook.ID = id
-			books = append(books, updateBook)
-		}
-	}
+	return libros, nil
 
-	json.NewEncoder(w).Encode(ResponseInfo{
-		Status: http.StatusAccepted,
-		Data:   "Libro actualizado",
-	})
-
+	return libros, nil
 }
-func DeleteBook(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	param := mux.Vars(r)
-	id, err := strconv.Atoi(param["id"])
+func (repo *bookRepository) CreateBook(book *domain.Book) error {
+	createdAt := time.Now()
+	result, err := repo.conn.Exec(`INSERT INTO books 
+	(title, author, price, stock, isbn, created_at, updated_at) 
+	VALUES(?,?,?,?,?,?, ?)`, book.Title, book.Author, book.Price, book.Stock, book.Isbn, createdAt, createdAt)
 
-	if err != nil || id <= 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ResponseInfo{
-			Status: http.StatusBadRequest,
-			Data:   id,
-		})
-		return
+	if err != nil {
+		return fmt.Errorf("error inserting book: %w", err)
 	}
-	var libro domain.Book
-	libroVacio := domain.Book{}
-	for i, v := range books {
-		if v.ID == id {
-			libro = v
-			books = append(books[:i], books[i+1:]...)
-		}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("error saving book: %w", err)
 	}
-	if libro == libroVacio {
-		w.WriteHeader(http.StatusBadRequest)
+	book.ID = int(id)
+	return nil
+}
 
-		json.NewEncoder(w).Encode(ResponseInfo{
-			Status: http.StatusBadRequest,
-			Data:   "Libro no encontrado",
-		})
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(ResponseInfo{
-		Status: http.StatusOK,
-		Data:   "Libro eliminado correctamente",
-	})
+func (repo *bookRepository) UpdateBook(id int, book *domain.Book) error {
+	return nil
 }
