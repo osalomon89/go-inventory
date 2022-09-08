@@ -21,6 +21,7 @@ type ResponseInfo struct {
 type Handler interface {
 	getBookByID(w http.ResponseWriter, r *http.Request)
 	getBooks(w http.ResponseWriter, r *http.Request)
+	getBooksByParam(w http.ResponseWriter, r *http.Request)
 	postBook(w http.ResponseWriter, r *http.Request)
 	patchBook(w http.ResponseWriter, r *http.Request)
 	putBook(w http.ResponseWriter, r *http.Request)
@@ -125,6 +126,27 @@ func (h *handler) getBooks(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *handler) getBooksByParam(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	author := r.URL.Query().Get("author")
+
+	result, err := h.repo.GetBookByParams(author)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusBadRequest,
+			Data:   "autor no encontrado",
+		})
+		return
+	}
+
+	json.NewEncoder(w).Encode(ResponseInfo{
+		Status: 200,
+		Data:   result,
+	})
+
+}
+
 func (h *handler) postBook(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var b domain.Book
@@ -205,7 +227,6 @@ func (h *handler) patchBook(w http.ResponseWriter, r *http.Request) {
 		Status: http.StatusOK,
 		Data:   foundBook,
 	})
-
 }
 
 func (h *handler) putBook(w http.ResponseWriter, r *http.Request) {

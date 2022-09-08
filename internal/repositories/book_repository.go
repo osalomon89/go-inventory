@@ -14,6 +14,7 @@ type BookRepository interface {
 	GetBookByID(id int) (*domain.Book, error)
 	CreateBook(book *domain.Book) error
 	GetBook() ([]domain.Book, error)
+	GetBookByParams(author string) ([]domain.Book, error)
 	UpdateBook(id int, book *domain.Book) error
 	UpdateBookByParams(id int, params map[string]interface{}, book *domain.Book) error
 	DeleteBook(id int) error
@@ -67,7 +68,24 @@ func (repo *bookRepository) GetBook() ([]domain.Book, error) {
 		return nil, fmt.Errorf("error getting books: %w", err)
 	}
 	return books, nil
+}
 
+func (repo *bookRepository) GetBookByParams(author string) ([]domain.Book, error) {
+	books := []domain.Book{}
+
+	/*if author == "" {
+		err := repo.conn.Select(&books, "SELECT * FROM books")
+		if err != nil {
+			return nil, fmt.Errorf("error getting books: %w", err)
+		}
+	} else {*/
+	err := repo.conn.Select(&books, "SELECT * FROM books WHERE author=? ORDER BY title ASC LIMIT 5 ", author)
+	if err != nil {
+		return nil, fmt.Errorf("error getting books: %w", err)
+	}
+	//}
+
+	return books, nil
 }
 
 func (repo *bookRepository) UpdateBook(id int, book *domain.Book) error {
