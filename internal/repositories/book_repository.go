@@ -10,7 +10,7 @@ import (
 )
 
 type BookRepository interface {
-	GetBooks() ([]domain.Book, error)
+	GetBooks(params map[string]interface{}) ([]domain.Book, error)
 	GetBookByID(id uint) (*domain.Book, error)
 	CreateBook(book *domain.Book) error
 	UpdateBook(id uint, book *domain.Book) error
@@ -28,17 +28,32 @@ func NewBookRepository(db *sqlx.DB) BookRepository {
 	}
 }
 
-func (repo *bookRepository) GetBooks() ([]domain.Book, error) {
-
+func (repo *bookRepository) GetBooks(params map[string]interface{}) ([]domain.Book, error) {
 	books := []domain.Book{}
+	limit := params["limit"]
+	offset := params["offset"]
+	delete(params, "limit")
+	delete(params, "offset")
 
-	err := repo.conn.Select(&books, "SELECT * FROM books")
+	whereQuery := ""
+	setParamsSlice, setValues := repo.getStatementParams(params)
+	if len(setParamsSlice) > 0 {
+		setParams := strings.Join(setParamsSlice, " AND ")
+		whereQuery = fmt.Sprintf(" WHERE %s", setParams)
+	}
+
+	queryLimit := repo.getLimitOffsetStatement(limit.(float64), offset.(float64))
+
+	query := fmt.Sprintf("SELECT * FROM books%s %s", whereQuery, queryLimit)
+
+	err := db.Select(&books, query, setValues...)
 	if err != nil {
-		return nil, fmt.Errorf("error getting book: %w", err)
+		return nil, fmt.Errorf("error getting all books: %w", err)
 	}
 
 	return books, nil
 }
+
 func (repo *bookRepository) GetBookByID(id uint) (*domain.Book, error) {
 	book := new(domain.Book)
 
@@ -162,4 +177,33 @@ func (repo *bookRepository) patchMyResource(book *domain.Book) (string, []interf
 	book.UpdatedAt = updateAt
 
 	return q, args
+}
+
+func (repo *bookRepository) getStatementParams(params map[string]interface{}) ([]string, []interface{}) {
+	var setParams []string
+	var setValues []interface{}
+
+	for key, val := range params {
+		if val == nil || val == "" || val == 0 {
+			continue
+		}
+		setParams = append(setParams, fmt.Sprintf("%s=?", key))
+		setValues = append(setValues, val)
+	}
+
+	return setParams, setValues
+}
+
+func (repo *bookRepository) getLimitOffsetStatement(limit, offset float64) string {
+	queryLimit := 100
+	queryOffset := 0
+	if limit > 0 && limit < 1000 {
+		queryLimit = int(limit)
+	}
+
+	if offset > 0 {
+		queryOffset = int(offset)
+	}
+
+	return fmt.Sprintf("LIMIT %d OFFSET %d", queryLimit, queryOffset)
 }
