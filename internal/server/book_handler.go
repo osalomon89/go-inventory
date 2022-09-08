@@ -254,7 +254,7 @@ func (h *handler) updateBook(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ResponseInfo{
 			Status: http.StatusBadRequest,
-			Data:   "El libro no existe",
+			Data:   err,
 		})
 		return
 	}

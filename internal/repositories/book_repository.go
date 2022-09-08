@@ -10,6 +10,14 @@ import (
 	"github.com/osalomon89/go-inventory/internal/domain"
 )
 
+var operationsByColumn = map[string]string{
+	"author": "LIKE",
+	"title":  "LIKE",
+	"price":  "",
+	"isbn":   "=",
+	"stock":  "",
+}
+
 type BookRepository interface {
 	GetBooks(params map[string]interface{}) ([]domain.Book, error)
 	GetBookByID(id uint) (*domain.Book, error)
@@ -80,6 +88,8 @@ func (repo *bookRepository) CreateBook(book *domain.Book) error {
 	}
 
 	book.ID = uint(id)
+	book.CreatedAt = createdAt
+	book.UpdatedAt = createdAt
 
 	return nil
 }
@@ -105,16 +115,12 @@ func (repo *bookRepository) UpdateBookByParams(id uint,
 	query := fmt.Sprintf("UPDATE books SET %s WHERE id=?", setParams)
 	setValues = append(setValues, id)
 
-	result, err := repo.conn.Exec(query, setValues...)
-
+	_, err = repo.conn.Exec(query, setValues...)
 	if err != nil {
 		return fmt.Errorf("error updating item: %w", err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil || rowsAffected == 0 {
-		return fmt.Errorf("error updating item: %w%d", err, rowsAffected)
-	}
+	book.UpdatedAt = updateAt
 
 	return nil
 }
@@ -124,7 +130,8 @@ func (repo *bookRepository) getStatementParams(params map[string]interface{}) ([
 	var setValues []interface{}
 
 	for key, val := range params {
-		if val == nil || val == "" || val == 0 {
+		_, ok := operationsByColumn[key]
+		if !ok || val == nil || val == "" || val == 0 {
 			continue
 		}
 		setParams = append(setParams, fmt.Sprintf("%s=?", key))
