@@ -37,7 +37,7 @@ func (r *httpRouter) SetupRouter() *mux.Router {
 
 	router.HandleFunc("/book/{id}", bookHandler.getBookByID).Methods("GET")
 	router.HandleFunc("/books", bookHandler.getBooks).Methods("GET")
-	router.HandleFunc("/book", bookHandler.getBooksByParam).Methods("GET")
+	router.HandleFunc("/book", bookHandler.getBooksByAuthor).Methods("GET")
 	router.HandleFunc("/books", bookHandler.postBook).Methods("POST")
 	router.HandleFunc("/book/{id}", bookHandler.putBook).Methods("PUT")
 	router.HandleFunc("/book/{id}", bookHandler.patchBook).Methods("PATCH")

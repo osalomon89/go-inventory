@@ -13,8 +13,8 @@ import (
 type BookRepository interface {
 	GetBookByID(id int) (*domain.Book, error)
 	CreateBook(book *domain.Book) error
-	GetBook() ([]domain.Book, error)
-	GetBookByParams(author string) ([]domain.Book, error)
+	GetBook(params map[string]interface{}) ([]domain.Book, error)
+	GetBookByAuthor(author string) ([]domain.Book, error)
 	UpdateBook(id int, book *domain.Book) error
 	UpdateBookByParams(id int, params map[string]interface{}, book *domain.Book) error
 	DeleteBook(id int) error
@@ -60,17 +60,33 @@ func (repo *bookRepository) CreateBook(book *domain.Book) error {
 	return nil
 }
 
-func (repo *bookRepository) GetBook() ([]domain.Book, error) {
+func (repo *bookRepository) GetBook(params map[string]interface{}) ([]domain.Book, error) {
 	books := []domain.Book{}
+	limit := params["limit"]
+	offset := params["offset"]
+	delete(params, "limit")
+	delete(params, "offset")
 
-	err := repo.conn.Select(&books, "SELECT * FROM books")
-	if err != nil {
-		return nil, fmt.Errorf("error getting books: %w", err)
+	whereQuery := ""
+	setParamsSlice, setValues := repo.getStatementParams(params)
+	if len(setParamsSlice) > 0 {
+		setParams := strings.Join(setParamsSlice, " AND ")
+		whereQuery = fmt.Sprintf(" WHERE %s", setParams)
 	}
+
+	queryLimit := repo.getLimitOffsetStatement(limit.(float64), offset.(float64))
+
+	query := fmt.Sprintf("SELECT * FROM books%s %s", whereQuery, queryLimit)
+
+	err := db.Select(&books, query, setValues...)
+	if err != nil {
+		return nil, fmt.Errorf("error getting all books: %w", err)
+	}
+
 	return books, nil
 }
 
-func (repo *bookRepository) GetBookByParams(author string) ([]domain.Book, error) {
+func (repo *bookRepository) GetBookByAuthor(author string) ([]domain.Book, error) {
 	books := []domain.Book{}
 
 	/*if author == "" {
@@ -138,18 +154,6 @@ func (repo *bookRepository) UpdateBookByParams(id int, params map[string]interfa
 	return nil
 }
 
-func (repo *bookRepository) getStatementParams(params map[string]interface{}) (string, []interface{}) {
-	var setParams []string
-	var setValues []interface{}
-
-	for key, val := range params {
-		setParams = append(setParams, fmt.Sprintf("%s=?", key))
-		setValues = append(setValues, val)
-	}
-
-	return strings.Join(setParams, ","), setValues
-}
-
 func (repo *bookRepository) DeleteBook(id int) error {
 	result, err := repo.conn.Exec(`DELETE FROM books WHERE id=?`, id)
 
@@ -160,4 +164,33 @@ func (repo *bookRepository) DeleteBook(id int) error {
 	fmt.Println(result)
 
 	return nil
+}
+
+func (repo *bookRepository) getStatementParams(params map[string]interface{}) ([]string, []interface{}) {
+	var setParams []string
+	var setValues []interface{}
+
+	for key, val := range params {
+		if val == nil || val == "" || val == 0 {
+			continue
+		}
+		setParams = append(setParams, fmt.Sprintf("%s=?", key))
+		setValues = append(setValues, val)
+	}
+
+	return setParams, setValues
+}
+
+func (repo *bookRepository) getLimitOffsetStatement(limit, offset float64) string {
+	queryLimit := 100
+	queryOffset := 0
+	if limit > 0 && limit < 1000 {
+		queryLimit = int(limit)
+	}
+
+	if offset > 0 {
+		queryOffset = int(offset)
+	}
+
+	return fmt.Sprintf("LIMIT %d OFFSET %d", queryLimit, queryOffset)
 }

@@ -7,10 +7,12 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/schema"
 	"github.com/osalomon89/go-inventory/internal/domain"
 	"github.com/osalomon89/go-inventory/internal/repositories"
 )
 
+var decoder = schema.NewDecoder()
 var books []domain.Book
 
 type ResponseInfo struct {
@@ -18,10 +20,20 @@ type ResponseInfo struct {
 	Data   interface{} `json:"data"`
 }
 
+type BookRequestQuery struct {
+	Author    string `json:"author"`
+	Title     string `json:"title"`
+	Isbn      string `json:"isbn"`
+	Limit     int    `json:"limit"`
+	Offset    int    `json:"offset"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
 type Handler interface {
 	getBookByID(w http.ResponseWriter, r *http.Request)
 	getBooks(w http.ResponseWriter, r *http.Request)
-	getBooksByParam(w http.ResponseWriter, r *http.Request)
+	getBooksByAuthor(w http.ResponseWriter, r *http.Request)
 	postBook(w http.ResponseWriter, r *http.Request)
 	patchBook(w http.ResponseWriter, r *http.Request)
 	putBook(w http.ResponseWriter, r *http.Request)
@@ -94,23 +106,10 @@ func (h *handler) getBookByID(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) getBooks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	/*author := r.URL.Query().Get("author")
-
-	if author != "" {
-		var sliceLibros []domain.Book
-		for _, v := range books {
-			if v.Author == author {
-				sliceLibros = append(sliceLibros, v)
-			}
-		}
-		json.NewEncoder(w).Encode(ResponseInfo{
-			Status: 200,
-			Data:   sliceLibros,
-		})
-		return
-	}*/
-
-	result, err := h.repo.GetBook()
+	//creo nuevo struct con datos ingresados
+	bookRequestQuery := new(BookRequestQuery)
+	// --
+	err := decoder.Decode(bookRequestQuery, r.URL.Query())
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ResponseInfo{
@@ -119,18 +118,50 @@ func (h *handler) getBooks(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	//con Marshal obtengo []byte
+	bookRequestQueryString, err := json.Marshal(bookRequestQuery)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusInternalServerError,
+			Data:   err,
+		})
+		return
+	}
+	//creo el map donde se van a guardar los params?? y con el unmarshal los guardo
+	var params map[string]interface{}
+	err = json.Unmarshal(bookRequestQueryString, &params)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusInternalServerError,
+			Data:   err,
+		})
+		return
+	}
+	//busco los libros con el Get
+	booksResult, err := h.repo.GetBook(params)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ResponseInfo{
+			Status: http.StatusBadRequest,
+			Data:   "El libro no existe",
+		})
+		return
+	}
 
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(ResponseInfo{
 		Status: 200,
-		Data:   result,
+		Data:   booksResult,
 	})
 }
 
-func (h *handler) getBooksByParam(w http.ResponseWriter, r *http.Request) {
+func (h *handler) getBooksByAuthor(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	author := r.URL.Query().Get("author")
 
-	result, err := h.repo.GetBookByParams(author)
+	result, err := h.repo.GetBookByAuthor(author)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ResponseInfo{
@@ -144,7 +175,6 @@ func (h *handler) getBooksByParam(w http.ResponseWriter, r *http.Request) {
 		Status: 200,
 		Data:   result,
 	})
-
 }
 
 func (h *handler) postBook(w http.ResponseWriter, r *http.Request) {
