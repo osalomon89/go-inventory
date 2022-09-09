@@ -10,6 +10,15 @@ import (
 	"github.com/osalomon89/go-inventory/internal/domain"
 )
 
+var operationsByColumn = map[string]string{
+	"author":     "LIKE",
+	"title":      "LIKE",
+	"price":      "",
+	"isbn":       "=",
+	"stock":      "",
+	"updated_at": "",
+}
+
 type BookRepository interface {
 	GetBookByID(id int) (*domain.Book, error)
 	CreateBook(book *domain.Book) error
@@ -171,7 +180,8 @@ func (repo *bookRepository) getStatementParams(params map[string]interface{}) ([
 	var setValues []interface{}
 
 	for key, val := range params {
-		if val == nil || val == "" || val == 0 {
+		_, ok := operationsByColumn[key]
+		if !ok || val == nil || val == "" || val == 0 {
 			continue
 		}
 		setParams = append(setParams, fmt.Sprintf("%s=?", key))
