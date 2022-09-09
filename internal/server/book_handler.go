@@ -249,7 +249,7 @@ func (h *handler) updateBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.repo.UpdateBookByParams(uint(id), bookRequestBody, foundBook)
+	err = h.repo.UpdateBookByParams(bookRequestBody, foundBook)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ResponseInfo{

@@ -11,18 +11,19 @@ import (
 )
 
 var operationsByColumn = map[string]string{
-	"author": "LIKE",
-	"title":  "LIKE",
-	"price":  "",
-	"isbn":   "=",
-	"stock":  "",
+	"author":     "LIKE",
+	"title":      "LIKE",
+	"price":      "",
+	"isbn":       "=",
+	"stock":      "",
+	"updated_at": "",
 }
 
 type BookRepository interface {
 	GetBooks(params map[string]interface{}) ([]domain.Book, error)
 	GetBookByID(id uint) (*domain.Book, error)
 	CreateBook(book *domain.Book) error
-	UpdateBookByParams(id uint, params map[string]interface{}, book *domain.Book) error
+	UpdateBookByParams(params map[string]interface{}, book *domain.Book) error
 }
 
 type bookRepository struct {
@@ -94,8 +95,8 @@ func (repo *bookRepository) CreateBook(book *domain.Book) error {
 	return nil
 }
 
-func (repo *bookRepository) UpdateBookByParams(id uint,
-	params map[string]interface{}, book *domain.Book) error {
+func (repo *bookRepository) UpdateBookByParams(params map[string]interface{},
+	book *domain.Book) error {
 	updateAt := time.Now()
 
 	params["updated_at"] = updateAt
@@ -113,14 +114,12 @@ func (repo *bookRepository) UpdateBookByParams(id uint,
 	setParams := strings.Join(setParamsSlice, ",")
 
 	query := fmt.Sprintf("UPDATE books SET %s WHERE id=?", setParams)
-	setValues = append(setValues, id)
+	setValues = append(setValues, book.ID)
 
 	_, err = repo.conn.Exec(query, setValues...)
 	if err != nil {
 		return fmt.Errorf("error updating item: %w", err)
 	}
-
-	book.UpdatedAt = updateAt
 
 	return nil
 }
