@@ -77,7 +77,7 @@ func (repo *bookRepository) GetBook(params map[string]interface{}) ([]domain.Boo
 	delete(params, "offset")
 
 	whereQuery := ""
-	setParamsSlice, setValues := repo.getStatementParams(params)
+	setParamsSlice, setValues := repo.getStatementParamGet(params)
 	if len(setParamsSlice) > 0 {
 		setParams := strings.Join(setParamsSlice, " AND ")
 		whereQuery = fmt.Sprintf(" WHERE %s", setParams)
@@ -130,9 +130,9 @@ func (repo *bookRepository) UpdateBook(id int, book *domain.Book) error {
 }
 
 func (repo *bookRepository) UpdateBookByParams(id int, params map[string]interface{}, book *domain.Book) error {
-	updatedAt := time.Now()
+	//updatedAt := time.Now()
 
-	params["updated_at"] = updatedAt
+	params["updated_at"] = time.Now()
 	//paso los datos a bytes
 	ja, err := json.Marshal(params)
 	if err != nil {
@@ -175,7 +175,7 @@ func (repo *bookRepository) DeleteBook(id int) error {
 	return nil
 }
 
-func (repo *bookRepository) getStatementParams(params map[string]interface{}) ([]string, []interface{}) {
+func (repo *bookRepository) getStatementParamGet(params map[string]interface{}) ([]string, []interface{}) {
 	var setParams []string
 	var setValues []interface{}
 
@@ -203,4 +203,16 @@ func (repo *bookRepository) getLimitOffsetStatement(limit, offset float64) strin
 	}
 
 	return fmt.Sprintf("LIMIT %d OFFSET %d", queryLimit, queryOffset)
+}
+
+func (repo *bookRepository) getStatementParams(params map[string]interface{}) (string, []interface{}) {
+	var setParams []string
+	var setValues []interface{}
+
+	for key, val := range params {
+		setParams = append(setParams, fmt.Sprintf("%s=?", key))
+		setValues = append(setValues, val)
+	}
+
+	return strings.Join(setParams, ","), setValues
 }
