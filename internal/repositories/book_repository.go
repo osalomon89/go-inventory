@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -15,7 +16,7 @@ type BookRepository interface {
 	CreateBook(book *domain.Book) error
 	UpdateBook(id uint, book *domain.Book) error
 	DeleteBook(id uint) error
-	UpdateBookByParams(id uint, book *domain.Book) error
+	UpdateBookByParams(id uint, params map[string]interface{}, book *domain.Book) error
 }
 
 type bookRepository struct {
@@ -61,7 +62,7 @@ func (repo *bookRepository) GetBookByID(id uint) (*domain.Book, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting book: %w", err)
 	}
-
+	fmt.Println(book)
 	return book, nil
 }
 
@@ -113,71 +114,81 @@ func (repo *bookRepository) DeleteBook(id uint) error {
 	return nil
 }
 
-func (repo *bookRepository) UpdateBookByParams(id uint, book *domain.Book) error {
+func (repo *bookRepository) UpdateBookByParams(id uint,
+	params map[string]interface{}, book *domain.Book) error {
 	updateAt := time.Now()
 
-	query, args := repo.patchMyResource(book)
-
-	result, err := repo.conn.Exec(query, args...)
+	params["updated_at"] = updateAt
+	ja, err := json.Marshal(params)
 	if err != nil {
-		return fmt.Errorf("error updating book: %w", err)
+		return fmt.Errorf("error marshalling book: %w", err)
+	}
+
+	err = json.Unmarshal(ja, book)
+	if err != nil {
+		return fmt.Errorf("error unmarshalling book: %w", err)
+	}
+
+	setParams, setValues := repo.getStatementParams2(params)
+
+	query := fmt.Sprintf("UPDATE books SET %s WHERE id=?", setParams)
+	setValues = append(setValues, id)
+
+	result, err := repo.conn.Exec(query, setValues...)
+
+	if err != nil {
+		return fmt.Errorf("error updating item: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("error getting rows affected: %w", err)
+	if err != nil || rowsAffected == 0 {
+		return fmt.Errorf("error updating item: %w%d", err, rowsAffected)
 	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("the book does not exist: %w", err)
-	}
-
-	book.UpdatedAt = updateAt
 
 	return nil
 }
 
-func (repo *bookRepository) patchMyResource(book *domain.Book) (string, []interface{}) {
-	q := `UPDATE books SET `
-	qParts := make([]string, 0, 2)
-	args := make([]interface{}, 0, 2)
-	updateAt := time.Now()
+// func (repo *bookRepository) patchMyResource(book *domain.Book) (string, []interface{}) {
+// 	q := `UPDATE books SET `
+// 	qParts := make([]string, 0, 2)
+// 	args := make([]interface{}, 0, 2)
+// 	updateAt := time.Now()
 
-	qParts = append(qParts, `updated_at=?`)
-	args = append(args, updateAt)
+// 	qParts = append(qParts, `updated_at=?`)
+// 	args = append(args, updateAt)
 
-	if book.Author != "" {
-		qParts = append(qParts, `author=?`)
-		args = append(args, book.Author)
-	}
+// 	if book.Author != "" {
+// 		qParts = append(qParts, `author=?`)
+// 		args = append(args, book.Author)
+// 	}
 
-	if book.Title != "" {
-		qParts = append(qParts, `title = ?`)
-		args = append(args, book.Title)
-	}
+// 	if book.Title != "" {
+// 		qParts = append(qParts, `title = ?`)
+// 		args = append(args, book.Title)
+// 	}
 
-	if book.Price != 0 {
-		qParts = append(qParts, `price = ?`)
-		args = append(args, book.Price)
-	}
+// 	if book.Price != 0 {
+// 		qParts = append(qParts, `price = ?`)
+// 		args = append(args, book.Price)
+// 	}
 
-	if book.Isbn != "" {
-		qParts = append(qParts, `isbn = ?`)
-		args = append(args, book.Isbn)
-	}
+// 	if book.Isbn != "" {
+// 		qParts = append(qParts, `isbn = ?`)
+// 		args = append(args, book.Isbn)
+// 	}
 
-	if book.Stock != 0 {
-		qParts = append(qParts, `stock = ?`)
-		args = append(args, book.Stock)
-	}
+// 	if book.Stock != 0 {
+// 		qParts = append(qParts, `stock = ?`)
+// 		args = append(args, book.Stock)
+// 	}
 
-	q += strings.Join(qParts, ",") + ` WHERE id = ?`
-	args = append(args, book.ID)
+// 	q += strings.Join(qParts, ",") + ` WHERE id = ?`
+// 	args = append(args, book.ID)
 
-	book.UpdatedAt = updateAt
+// 	book.UpdatedAt = updateAt
 
-	return q, args
-}
+// 	return q, args
+// }
 
 func (repo *bookRepository) getStatementParams(params map[string]interface{}) ([]string, []interface{}) {
 	var setParams []string
@@ -206,4 +217,16 @@ func (repo *bookRepository) getLimitOffsetStatement(limit, offset float64) strin
 	}
 
 	return fmt.Sprintf("LIMIT %d OFFSET %d", queryLimit, queryOffset)
+}
+
+func (repo *bookRepository) getStatementParams2(params map[string]interface{}) (string, []interface{}) {
+	var setParams []string
+	var setValues []interface{}
+
+	for key, val := range params {
+		setParams = append(setParams, fmt.Sprintf("%s=?", key))
+		setValues = append(setValues, val)
+	}
+
+	return strings.Join(setParams, ","), setValues
 }
