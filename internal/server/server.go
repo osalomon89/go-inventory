@@ -35,12 +35,13 @@ func (r *httpRouter) SetupRouter() *mux.Router {
 
 	bookRepository := repositories.NewBookRepository(dbConn)
 
-	bookHandler := newHandler(bookRepository)
+	bookHandler := NewHandler(bookRepository)
 
 	router.HandleFunc("/books", bookHandler.getBooks).Methods("GET")
-	router.HandleFunc("/books", bookHandler.postBook).Methods("POST")
+	router.HandleFunc("/books", bookHandler.PostBook).Methods("POST")
 	router.HandleFunc("/books/{id}", bookHandler.getBookByID).Methods("GET")
 	router.HandleFunc("/books/{id}", bookHandler.putBook).Methods("PUT")
+	router.HandleFunc("/books/{id}", bookHandler.updateBook).Methods("PATCH")
 	router.HandleFunc("/books/{id}", bookHandler.deleteBook).Methods("DELETE")
 
 	return router
