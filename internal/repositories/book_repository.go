@@ -19,6 +19,7 @@ var operationsByColumn = map[string]string{
 	"updated_at": "",
 }
 
+//go:generate mockgen -source=./book_repository.go -destination=../test/mocks/book_repository_mock.go -package=mocks
 type BookRepository interface {
 	GetBooks(params map[string]interface{}) ([]domain.Book, error)
 	GetBookByID(id uint) (*domain.Book, error)
@@ -85,7 +86,7 @@ func (repo *bookRepository) CreateBook(book *domain.Book) error {
 
 	id, err := result.LastInsertId()
 	if err != nil {
-		return fmt.Errorf("error saving book: %w", err)
+		return fmt.Errorf("error getting last insert id: %w", err)
 	}
 
 	book.ID = uint(id)

@@ -23,7 +23,7 @@ type ResponseInfo struct {
 type Handler interface {
 	getBookByID(w http.ResponseWriter, r *http.Request)
 	getBooks(w http.ResponseWriter, r *http.Request)
-	postBook(w http.ResponseWriter, r *http.Request)
+	PostBook(w http.ResponseWriter, r *http.Request)
 	putBook(w http.ResponseWriter, r *http.Request)
 	updateBook(w http.ResponseWriter, r *http.Request)
 	deleteBook(w http.ResponseWriter, r *http.Request)
@@ -33,7 +33,7 @@ type handler struct {
 	repo repositories.BookRepository
 }
 
-func newHandler(bookRepository repositories.BookRepository) Handler {
+func NewHandler(bookRepository repositories.BookRepository) Handler {
 	return &handler{
 		repo: bookRepository,
 	}
@@ -133,11 +133,12 @@ func (h *handler) getBooks(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *handler) postBook(w http.ResponseWriter, r *http.Request) {
+func (h *handler) PostBook(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var b domain.Book
 	err := json.NewDecoder(r.Body).Decode(&b)
 	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ResponseInfo{
 			Status: http.StatusBadRequest,
 			Data:   "error",
