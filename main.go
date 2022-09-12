@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -25,6 +26,8 @@ type ResponseInfo struct {
 }
 
 func main() {
+	fmt.Println("hola")
+
 	router := mux.NewRouter()
 
 	const port string = ":8888"
