@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jmoiron/sqlx"
+	"github.com/jinzhu/gorm"
 	"github.com/osalomon89/go-inventory/internal/domain"
 )
 
@@ -15,14 +15,15 @@ type BookRepository interface {
 	CreateBook(book *domain.Book) error
 	GetBooks(params map[string]interface{}) ([]domain.Book, error)
 	DeleteBook(id int) error
+	UpdateBook(id uint, book *domain.Book) error
 	UpdateBookByParams(id uint, params map[string]interface{}, book *domain.Book) error
 }
 
 type bookRepository struct {
-	conn *sqlx.DB
+	conn *gorm.DB
 }
 
-func NewBookRepository(db *sqlx.DB) BookRepository {
+func NewBookRepository(db *gorm.DB) BookRepository {
 	return &bookRepository{
 		conn: db,
 	}
@@ -30,7 +31,7 @@ func NewBookRepository(db *sqlx.DB) BookRepository {
 
 func (repo *bookRepository) GetBookByID(id uint) (*domain.Book, error) {
 	book := new(domain.Book)
-	err := repo.conn.Get(book, "SELECT * FROM books WHERE id=?", id)
+	err := repo.conn.First(&book, id) //Get(book, "SELECT * FROM books WHERE id=?", id)
 	if err != nil {
 		return nil, fmt.Errorf("error getting book: %w", err)
 	}
@@ -41,9 +42,10 @@ func (repo *bookRepository) GetBookByID(id uint) (*domain.Book, error) {
 func (repo *bookRepository) CreateBook(book *domain.Book) error {
 	createdAt := time.Now()
 
-	result, err := repo.conn.Exec(`INSERT INTO books 
-		(title, author, price, stock, isbn, created_at, updated_at) 
-		VALUES(?,?,?,?,?,?, ?)`, book.Title, book.Author, book.Price, book.Stock, book.Isbn, createdAt, createdAt)
+	result, err := repo.conn.Select(book.Title, book.Author, book.Price, book.Stock, book.Isbn, createdAt, createdAt).Create(book)
+	/*Exec(`INSERT INTO books
+	(title, author, price, stock, isbn, created_at, updated_at)
+	VALUES(?,?,?,?,?,?, ?)`, book.Title, book.Author, book.Price, book.Stock, book.Isbn, createdAt, createdAt) */
 
 	if err != nil {
 		return fmt.Errorf("error inserting book: %w", err)
@@ -100,12 +102,30 @@ func (repo *bookRepository) getLimitOffsetStatement(limit, offset float64) strin
 }
 
 func (repo *bookRepository) DeleteBook(id int) error {
-	result, err := repo.conn.Exec(`DELETE FROM books WHERE id=?`, id)
+	book := new(domain.Book)
+	result, err := repo.conn.Delete(book, id) //Exec(`DELETE FROM books WHERE id=?`, id)
 
 	if err != nil {
 		return fmt.Errorf("error deleting book: %w", err)
 	}
 
+	fmt.Println(result)
+
+	return nil
+}
+
+func (repo *bookRepository) UpdateBook(id uint, book *domain.Book) error {
+
+	updatedAt := time.Now()
+
+	result, err := repo.conn.Select(book.Title, book.Author, book.Price, book.Stock, book.Isbn, updatedAt).Create(book)
+	/*Exec(`UPDATE books SET
+	title=?, author=?, price=?, stock=?, isbn=?, updated_at=? WHERE id=?
+	`, book.Title, book.Author, book.Price, book.Stock, book.Isbn, updatedAt, id)*/
+
+	if err != nil {
+		return fmt.Errorf("error inserting book: %w", err)
+	}
 	fmt.Println(result)
 
 	return nil

@@ -42,6 +42,7 @@ func (r *httpRouter) SetupRouter() *mux.Router {
 	router.HandleFunc("/books/{id}", bookHandler.getBookByID).Methods("GET")
 	router.HandleFunc("/books/{id}", bookHandler.putBook).Methods("PUT")
 	router.HandleFunc("/books/{id}", bookHandler.deleteBook).Methods("DELETE")
+	router.HandleFunc("/books/{id}", bookHandler.updateBook).Methods("PATCH")
 
 	return router
 }
@@ -56,6 +57,6 @@ func ping(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(ResponseInfo{
 		Status: http.StatusOK,
-		Data:   "pong",
+		Data:   "ping",
 	})
 }

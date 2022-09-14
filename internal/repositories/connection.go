@@ -3,7 +3,8 @@ package repositories
 import (
 	"fmt"
 
-	"github.com/jmoiron/sqlx"
+	"github.com/jinzhu/gorm"
+	"github.com/osalomon89/go-inventory/internal/domain"
 )
 
 const (
@@ -14,13 +15,14 @@ const (
 	DB_PASS = "secret"
 )
 
-var db *sqlx.DB //nolint:gochecknoglobals
+var db *gorm.DB
+var booksSchema *domain.Book
 
-func GetConnectionDB() (*sqlx.DB, error) {
+func GetConnectionDB() (*gorm.DB, error) {
 	var err error
 
 	if db == nil {
-		db, err = sqlx.Connect("mysql", dbConnectionURL())
+		db, err = gorm.Open("mysql", dbConnectionURL())
 		if err != nil {
 			fmt.Printf("########## DB ERROR: " + err.Error() + " #############")
 			return nil, fmt.Errorf("### DB ERROR: %w", err)
@@ -34,25 +36,26 @@ func GetConnectionDB() (*sqlx.DB, error) {
 	return db, nil
 }
 
-func migrate(db *sqlx.DB) error {
-	var booksSchema = `
-	CREATE TABLE IF NOT EXISTS books (
-		id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-		author varchar(200) DEFAULT NULL,
-		title longtext,
-		price bigint(20) DEFAULT NULL,
-		isbn varchar(200) DEFAULT NULL,
-		stock bigint(20) DEFAULT NULL,
-		created_at datetime(3) DEFAULT NULL,
-		updated_at datetime(3) DEFAULT NULL,
-		PRIMARY KEY (id),
-		UNIQUE KEY isbn (isbn)
-	  );`
-
-	_, err := db.Exec(booksSchema)
-	if err != nil {
-		fmt.Printf("########## DB ERROR: " + err.Error() + " #############")
-		return fmt.Errorf("### MIGRATION ERROR: %w", err)
+func migrate(db *gorm.DB) error {
+	var err = db.AutoMigrate(booksSchema)
+	/*
+		var booksSchema = `
+		CREATE TABLE IF NOT EXISTS books (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			author varchar(200) DEFAULT NULL,
+			title longtext,
+			price bigint(20) DEFAULT NULL,
+			isbn varchar(200) DEFAULT NULL,
+			stock bigint(20) DEFAULT NULL,
+			created_at datetime(3) DEFAULT NULL,
+			updated_at datetime(3) DEFAULT NULL,
+			PRIMARY KEY (id),
+			UNIQUE KEY isbn (isbn)
+		  );`
+	*/
+	if err.Error != nil {
+		fmt.Printf("########## DB ERROR #############")
+		return fmt.Errorf("### MIGRATION ERROR:")
 	}
 
 	return nil
