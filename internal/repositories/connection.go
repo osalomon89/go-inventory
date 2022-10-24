@@ -3,8 +3,9 @@ package repositories
 import (
 	"fmt"
 
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/jmoiron/sqlx"
+	"github.com/osalomon89/go-inventory/internal/domain"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
 const (
@@ -15,6 +16,30 @@ const (
 	DB_PASS = "secret"
 )
 
+// gorm
+func GetConnectionDB() (*gorm.DB, error) {
+	db, err := gorm.Open(mysql.Open(dbConnectionURL()))
+	if err != nil {
+		return nil, fmt.Errorf("error connecting to db: %w", err)
+	}
+
+	if err := migrate(db); err != nil {
+		return nil, err
+	}
+	return db, nil
+}
+func migrate(db *gorm.DB) error {
+	err := db.AutoMigrate(&domain.Book{})
+	if err != nil {
+		return fmt.Errorf("error migrating db: %w", err)
+	}
+	return nil
+}
+func dbConnectionURL() string {
+	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8&parseTime=True", DB_USER, DB_PASS, DB_HOST, DB_PORT, DB_NAME)
+}
+
+/*
 var db *sqlx.DB
 
 func GetConnectionDB() (*sqlx.DB, error) {
@@ -54,7 +79,4 @@ func migrate(db *sqlx.DB) error {
 	}
 	return nil
 }
-
-func dbConnectionURL() string {
-	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8&parseTime=True", DB_USER, DB_PASS, DB_HOST, DB_PORT, DB_NAME)
-}
+*/

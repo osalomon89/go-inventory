@@ -1,5 +1,8 @@
 package main
 
+//TODO: Factorización y formateo de errores
+//TODO: Consultas con orm
+//TODO: Realizaar cambios para un nuevo PR
 import (
 	"log"
 
