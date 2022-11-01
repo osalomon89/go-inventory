@@ -2,17 +2,19 @@ package repositories
 
 import (
 	"fmt"
+	"os"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	"github.com/joho/godotenv"
 )
 
 const (
-	DB_HOST = "127.0.0.1"
-	DB_PORT = 3306
-	DB_NAME = "test-db"
-	DB_USER = "root"
-	DB_PASS = "secret"
+	dbHost = "DB_HOST"
+	dbPort = "DB_PORT"
+	dbUser = "DB_USER"
+	dbPass = "DB_PASS"
+	dbName = "DB_NAME"
 )
 
 var db *sqlx.DB //nolint:gochecknoglobals
@@ -60,5 +62,11 @@ func migrate(db *sqlx.DB) error {
 }
 
 func dbConnectionURL() string {
-	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8&parseTime=True", DB_USER, DB_PASS, DB_HOST, DB_PORT, DB_NAME)
+	if os.Getenv("GO_ENVIRONMENT") == "" {
+		if err := godotenv.Load(".env"); err != nil {
+			panic(err.Error())
+		}
+	}
+
+	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=True", os.Getenv(dbUser), os.Getenv(dbPass), os.Getenv(dbHost), os.Getenv(dbPort), os.Getenv(dbName))
 }

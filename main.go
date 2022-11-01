@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	const port string = ":8888"
+	const port string = ":8080"
 	httpServer := server.NewHTTPRouter(port)
 
 	router := httpServer.SetupRouter()
