@@ -1,25 +1,8 @@
 version: "3.7"
 
 services:
-  go-inventory:
-    container_name: inventory-app
-    build: .
-    ports:
-      - 3000:8080
-    depends_on:
-      - mysql
-    networks:
-      - book-app
-    environment:
-      GO_ENVIRONMENT: production
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: root
-      DB_PASS: secret
-      DB_NAME: inventory
-
   mysql:
-    container_name: mysql-db-test
+    container_name: mysql-test
     image: mysql:5.7
     volumes:
       - mysql-data:/var/lib/mysql
@@ -29,11 +12,28 @@ services:
       MYSQL_ROOT_PASSWORD: secret
       MYSQL_DATABASE: inventory
     networks:
-      - book-app
+      - inventory-net
+
+  go-inventory:
+    container_name: inventory-app
+    build: .
+    ports:
+      - 3000:8080
+    depends_on:
+      - mysql
+    networks:
+      - inventory-net
+    environment:
+      GO_ENVIRONMENT: production
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASS: secret
+      DB_NAME: inventory
 
 volumes:
   mysql-data:
 
 networks:
-  book-app:
+  inventory-net:
     driver: bridge
