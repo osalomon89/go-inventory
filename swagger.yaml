@@ -1,0 +1,157 @@
+basePath: /
+consumes:
+    - application/json
+definitions:
+    Book:
+        properties:
+            author:
+                description: The Author of a book
+                example: Some name
+                type: string
+                x-go-name: Author
+            created_at:
+                format: date-time
+                type: string
+                x-go-name: CreatedAt
+            id:
+                description: The ID of a book
+                example: 12345
+                format: uint64
+                type: integer
+                x-go-name: ID
+            isbn:
+                type: string
+                x-go-name: Isbn
+            price:
+                format: int64
+                type: integer
+                x-go-name: Price
+            stock:
+                format: int64
+                type: integer
+                x-go-name: Stock
+            title:
+                type: string
+                x-go-name: Title
+            updated_at:
+                format: date-time
+                type: string
+                x-go-name: UpdatedAt
+        type: object
+        x-go-package: github.com/osalomon89/go-inventory/internal/domain
+    ResponseAllInfo:
+        properties:
+            data:
+                items:
+                    $ref: '#/definitions/Book'
+                type: array
+                x-go-name: Data
+            status:
+                format: int64
+                type: integer
+                x-go-name: Status
+        type: object
+        x-go-package: github.com/osalomon89/go-inventory/internal/server
+    ResponseDeleteInfo:
+        properties:
+            data:
+                type: string
+                x-go-name: Data
+            status:
+                format: int64
+                type: integer
+                x-go-name: Status
+        type: object
+        x-go-package: github.com/osalomon89/go-inventory/internal/server
+    ResponseError:
+        properties:
+            data:
+                type: string
+                x-go-name: Data
+            status:
+                format: int64
+                type: integer
+                x-go-name: Status
+        type: object
+        x-go-package: github.com/osalomon89/go-inventory/internal/server
+    ResponseInfo:
+        properties:
+            data:
+                $ref: '#/definitions/Book'
+            status:
+                format: int64
+                type: integer
+                x-go-name: Status
+        type: object
+        x-go-package: github.com/osalomon89/go-inventory/internal/server
+host: localhost:5000
+info:
+    description: API to create, update and delete books.
+    license:
+        name: MIT
+        url: http://opensource.org/licenses/MIT
+    title: Inventory APP.
+    version: "1.0"
+paths:
+    /books:
+        get:
+            operationId: getBooks
+            responses:
+                "200":
+                    description: ResponseInfo
+                    schema:
+                        $ref: '#/definitions/ResponseInfo'
+                "400":
+                    description: ResponseError
+                    schema:
+                        $ref: '#/definitions/ResponseError'
+                "500":
+                    description: ResponseError
+                    schema:
+                        $ref: '#/definitions/ResponseError'
+            tags:
+                - getBooks
+        post:
+            operationId: postBooks
+            requestBody:
+                description: Create a new pet in the store
+                content:
+                application/json:
+                    schema:
+                    $ref: '#/components/schemas/Order'
+                required: true
+            responses:
+                "200":
+                    description: ResponseInfo
+                    schema:
+                        $ref: '#/definitions/ResponseInfo'
+                "400":
+                    description: ResponseError
+                    schema:
+                        $ref: '#/definitions/ResponseError'
+                "500":
+                    description: ResponseError
+                    schema:
+                        $ref: '#/definitions/ResponseError'
+            tags:
+                - getBooks
+    /books/{id}:
+        get:
+            operationId: getBookByID
+            responses:
+                "200":
+                    description: ResponseInfo
+                    schema:
+                        $ref: '#/definitions/ResponseInfo'
+                "400":
+                    description: ResponseError
+                    schema:
+                        $ref: '#/definitions/ResponseError'
+            tags:
+                - getBookByID
+produces:
+    - application/json
+schemes:
+    - http
+    - https
+swagger: "2.0"

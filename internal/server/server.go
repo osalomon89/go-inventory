@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/gorilla/mux"
 	"github.com/osalomon89/go-inventory/internal/repositories"
 )
@@ -27,6 +28,17 @@ func (r *httpRouter) SetupRouter() *mux.Router {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/ping", ping).Methods("GET")
+	router.Handle("/swagger.yaml", http.FileServer(http.Dir("../../")))
+
+	// documentation for developers
+	opts := middleware.SwaggerUIOpts{SpecURL: "../../swagger.yaml"}
+	sh := middleware.SwaggerUI(opts, nil)
+	router.Handle("/docs", sh)
+
+	// documentation for share
+	opts1 := middleware.RedocOpts{SpecURL: "../../swagger.yaml", Path: "docs1"}
+	sh1 := middleware.Redoc(opts1, nil)
+	router.Handle("/docs1", sh1)
 
 	dbConn, err := repositories.GetConnectionDB()
 	if err != nil {
@@ -55,8 +67,5 @@ func ping(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	json.NewEncoder(w).Encode(ResponseInfo{
-		Status: http.StatusOK,
-		Data:   "pong",
-	})
+	json.NewEncoder(w).Encode("pong")
 }

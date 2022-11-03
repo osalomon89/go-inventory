@@ -2,8 +2,13 @@ package domain
 
 import "time"
 
+// swagger:model Book
 type Book struct {
-	ID        uint      `json:"id"`
+	// The ID of a book
+	// example: 12345
+	ID uint `json:"id"`
+	// The Author of a book
+	// example: Some name
 	Author    string    `json:"author" validate:"required"`
 	Title     string    `json:"title"`
 	Price     int       `json:"price"`
