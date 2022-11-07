@@ -10,6 +10,8 @@ definitions:
                 type: string
                 x-go-name: Author
             created_at:
+                description: The date of creation
+                example: 2022-10-01T22:11:33
                 format: date-time
                 type: string
                 x-go-name: CreatedAt
@@ -20,20 +22,30 @@ definitions:
                 type: integer
                 x-go-name: ID
             isbn:
+                description: The ISBN of a book
+                example: 123errtr5789
                 type: string
                 x-go-name: Isbn
             price:
+                description: The Price of a book
+                example: 5000
                 format: int64
                 type: integer
                 x-go-name: Price
             stock:
+                description: The number of books
+                example: 50
                 format: int64
                 type: integer
                 x-go-name: Stock
             title:
+                description: The Title of a book
+                example: The tittle book
                 type: string
                 x-go-name: Title
             updated_at:
+                description: The date of update
+                example: 2022-10-01T22:11:33
                 format: date-time
                 type: string
                 x-go-name: UpdatedAt
@@ -66,9 +78,13 @@ definitions:
     ResponseError:
         properties:
             data:
+                description: The Response Data
+                example: error getting book
                 type: string
                 x-go-name: Data
             status:
+                description: The Response Status code
+                example: 400
                 format: int64
                 type: integer
                 x-go-name: Status
@@ -79,6 +95,8 @@ definitions:
             data:
                 $ref: '#/definitions/Book'
             status:
+                description: The Response Status code
+                example: 200
                 format: int64
                 type: integer
                 x-go-name: Status
@@ -95,31 +113,54 @@ info:
 paths:
     /books:
         get:
+            consumes:
+                - application/json
+            description: This will show all available books by default.
             operationId: getBooks
+            parameters:
+                - description: maximum numnber of results to return
+                  format: int32
+                  in: query
+                  name: limit
+                  type: integer
+                - description: number of results to skip
+                  format: int32
+                  in: query
+                  name: offset
+                  type: integer
+                - description: isbn number
+                  in: query
+                  name: isbn
+                  type: string
+            produces:
+                - application/json
             responses:
                 "200":
-                    description: ResponseInfo
+                    description: ResponseAllInfo
                     schema:
-                        $ref: '#/definitions/ResponseInfo'
+                        $ref: '#/definitions/ResponseAllInfo'
                 "400":
                     description: ResponseError
                     schema:
                         $ref: '#/definitions/ResponseError'
-                "500":
-                    description: ResponseError
-                    schema:
-                        $ref: '#/definitions/ResponseError'
+            schemes:
+                - http
+                - https
+            summary: Lists books filtered by some parameters.
             tags:
                 - getBooks
         post:
-            operationId: postBooks
-            requestBody:
-                description: Create a new pet in the store
-                content:
-                application/json:
-                    schema:
-                    $ref: '#/components/schemas/Order'
-                required: true
+            consumes:
+                - application/json
+            description: This will create a book.
+            operationId: createBook
+            parameters:
+                - description: body with book parameters
+                  in: body
+                  name: Body
+                  required: true
+            produces:
+                - application/json
             responses:
                 "200":
                     description: ResponseInfo
@@ -129,12 +170,12 @@ paths:
                     description: ResponseError
                     schema:
                         $ref: '#/definitions/ResponseError'
-                "500":
-                    description: ResponseError
-                    schema:
-                        $ref: '#/definitions/ResponseError'
+            schemes:
+                - http
+                - https
+            summary: Create book.
             tags:
-                - getBooks
+                - createBook
     /books/{id}:
         get:
             operationId: getBookByID
@@ -147,6 +188,7 @@ paths:
                     description: ResponseError
                     schema:
                         $ref: '#/definitions/ResponseError'
+            summary: This is the description for getting a book by its ID. Which can be longer.
             tags:
                 - getBookByID
 produces:

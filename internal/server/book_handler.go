@@ -18,7 +18,7 @@ var books []domain.Book
 type Handler interface {
 	getBookByID(w http.ResponseWriter, r *http.Request)
 	getBooks(w http.ResponseWriter, r *http.Request)
-	postBook(w http.ResponseWriter, r *http.Request)
+	createBook(w http.ResponseWriter, r *http.Request)
 	putBook(w http.ResponseWriter, r *http.Request)
 	updateBook(w http.ResponseWriter, r *http.Request)
 	deleteBook(w http.ResponseWriter, r *http.Request)
@@ -35,6 +35,7 @@ func newHandler(bookRepository repositories.BookRepository) Handler {
 }
 
 // swagger:route GET /books/{id} getBookByID getBookByID
+// This is the description for getting a book by its ID. Which can be longer.
 // Responses:
 // - 200: ResponseInfo
 // - 400: ResponseError
@@ -71,21 +72,42 @@ func (h *handler) getBookByID(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-type BookRequestQuery struct {
-	Author    string `json:"author"`
-	Title     string `json:"title"`
-	Isbn      string `json:"isbn"`
-	Limit     int    `json:"limit"`
-	Offset    int    `json:"offset"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
-}
-
 // swagger:route GET /books getBooks getBooks
-// Responses:
-// - 200: ResponseInfo
-// - 400: ResponseError
-// - 500: ResponseError
+//
+// Lists books filtered by some parameters.
+//
+// This will show all available books by default.
+//
+//		Consumes:
+//		- application/json
+//
+//		Produces:
+//		- application/json
+//
+//		Schemes: http, https
+//
+//		Parameters:
+//		  + name: limit
+//		    in: query
+//		    description: maximum numnber of results to return
+//		    required: false
+//		    type: integer
+//		    format: int32
+//		  + name: offset
+//		    in: query
+//		    description: number of results to skip
+//		    required: false
+//		    type: integer
+//		    format: int32
+//		  + name: isbn
+//		    in: query
+//		    description: isbn number
+//		    required: false
+//		    type: string
+//
+//	    Responses:
+//	      200: ResponseAllInfo
+//	      400: ResponseError
 func (h *handler) getBooks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	bookRequestQuery := new(BookRequestQuery)
@@ -137,7 +159,32 @@ func (h *handler) getBooks(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *handler) postBook(w http.ResponseWriter, r *http.Request) {
+// swagger:route POST /books createBook createBook
+//
+// Create book.
+//
+// This will create a book.
+//
+//	Consumes:
+//		- application/json
+//
+//	Produces:
+//		- application/json
+//
+//	Schemes: http, https
+//
+//	Parameters:
+//		+ name: Body
+//		in: body
+//		description: body with book parameters
+//		required: true
+//		schema:
+//	   		"$ref": "#/definitions/Body"
+//
+//	Responses:
+//		200: ResponseInfo
+//		400: ResponseError
+func (h *handler) createBook(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var b domain.Book
 	err := json.NewDecoder(r.Body).Decode(&b)

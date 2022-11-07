@@ -9,11 +9,23 @@ type Book struct {
 	ID uint `json:"id"`
 	// The Author of a book
 	// example: Some name
-	Author    string    `json:"author" validate:"required"`
-	Title     string    `json:"title"`
-	Price     int       `json:"price"`
-	Isbn      string    `json:"isbn"`
-	Stock     int       `json:"stock"`
+	Author string `json:"author" validate:"required"`
+	// The Title of a book
+	// example: The tittle book
+	Title string `json:"title"`
+	// The Price of a book
+	// example: 5000
+	Price int `json:"price"`
+	// The ISBN of a book
+	// example: 123errtr5789
+	Isbn string `json:"isbn"`
+	// The number of books
+	// example: 50
+	Stock int `json:"stock"`
+	// The date of creation
+	// example: 2022-10-01T22:11:33
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
+	// The date of update
+	// example: 2022-10-01T22:11:33
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
