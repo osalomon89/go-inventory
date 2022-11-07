@@ -19,17 +19,15 @@ services:
     build: .
     ports:
       - 3000:8080
+    restart: on-failure
     depends_on:
       - mysql
+    # links:
+      # - "mysql:database"
     networks:
       - inventory-net
     environment:
       GO_ENVIRONMENT: production
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: root
-      DB_PASS: secret
-      DB_NAME: inventory
 
 volumes:
   mysql-data:

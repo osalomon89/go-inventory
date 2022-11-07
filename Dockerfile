@@ -4,7 +4,7 @@ FROM golang:1.19-alpine
 WORKDIR /app
 
 ENV GO_ENVIRONMENT=production
-ENV DB_HOST=127.0.0.1
+ENV DB_HOST=mysql
 ENV DB_PORT=3306
 ENV DB_NAME=inventory
 ENV DB_USER=root
