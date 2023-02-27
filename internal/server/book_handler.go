@@ -15,13 +15,23 @@ import (
 var decoder = schema.NewDecoder()
 var books []domain.Book
 
+type ResponseError struct {
+	Status int    `json:"status"`
+	Data   string `json:"data"`
+}
+
 type ResponseInfo struct {
 	Status int         `json:"status"`
-	Data   interface{} `json:"data"`
+	Data   domain.Book `json:"data"`
+}
+
+type ResponseListInfo struct {
+	Status int           `json:"status"`
+	Data   []domain.Book `json:"data"`
 }
 
 type Handler interface {
-	getBookByID(w http.ResponseWriter, r *http.Request)
+	GetBookByID(w http.ResponseWriter, r *http.Request)
 	getBooks(w http.ResponseWriter, r *http.Request)
 	PostBook(w http.ResponseWriter, r *http.Request)
 	putBook(w http.ResponseWriter, r *http.Request)
@@ -39,7 +49,7 @@ func NewHandler(bookRepository repositories.BookRepository) Handler {
 	}
 }
 
-func (h *handler) getBookByID(w http.ResponseWriter, r *http.Request) {
+func (h *handler) GetBookByID(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	param := mux.Vars(r)
 	idParam := param["id"]
@@ -48,7 +58,7 @@ func (h *handler) getBookByID(w http.ResponseWriter, r *http.Request) {
 	if err != nil || id <= 0 {
 		w.WriteHeader(http.StatusBadRequest)
 
-		json.NewEncoder(w).Encode(ResponseInfo{
+		json.NewEncoder(w).Encode(ResponseError{
 			Status: http.StatusBadRequest,
 			Data:   "error " + idParam,
 		})
@@ -58,7 +68,7 @@ func (h *handler) getBookByID(w http.ResponseWriter, r *http.Request) {
 	result, err := h.repo.GetBookByID(uint(id))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ResponseInfo{
+		json.NewEncoder(w).Encode(ResponseError{
 			Status: http.StatusBadRequest,
 			Data:   "El libro no existe",
 		})
@@ -68,7 +78,7 @@ func (h *handler) getBookByID(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(ResponseInfo{
 		Status: http.StatusOK,
-		Data:   result,
+		Data:   *result,
 	})
 }
 
@@ -88,7 +98,7 @@ func (h *handler) getBooks(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(bookRequestQuery, r.URL.Query())
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ResponseInfo{
+		json.NewEncoder(w).Encode(ResponseError{
 			Status: http.StatusBadRequest,
 			Data:   "El libro no existe",
 		})
@@ -98,9 +108,9 @@ func (h *handler) getBooks(w http.ResponseWriter, r *http.Request) {
 	bookRequestQueryString, err := json.Marshal(bookRequestQuery)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(ResponseInfo{
+		json.NewEncoder(w).Encode(ResponseError{
 			Status: http.StatusInternalServerError,
-			Data:   err,
+			Data:   err.Error(),
 		})
 		return
 	}
@@ -109,9 +119,9 @@ func (h *handler) getBooks(w http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal(bookRequestQueryString, &params)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(ResponseInfo{
+		json.NewEncoder(w).Encode(ResponseError{
 			Status: http.StatusInternalServerError,
-			Data:   err,
+			Data:   err.Error(),
 		})
 		return
 	}
@@ -119,7 +129,7 @@ func (h *handler) getBooks(w http.ResponseWriter, r *http.Request) {
 	booksResult, err := h.repo.GetBooks(params)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ResponseInfo{
+		json.NewEncoder(w).Encode(ResponseError{
 			Status: http.StatusBadRequest,
 			Data:   "El libro no existe",
 		})
@@ -127,7 +137,7 @@ func (h *handler) getBooks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(ResponseInfo{
+	json.NewEncoder(w).Encode(ResponseListInfo{
 		Status: 200,
 		Data:   booksResult,
 	})
@@ -139,7 +149,7 @@ func (h *handler) PostBook(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&b)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ResponseInfo{
+		json.NewEncoder(w).Encode(ResponseError{
 			Status: http.StatusBadRequest,
 			Data:   "error",
 		})
@@ -149,9 +159,9 @@ func (h *handler) PostBook(w http.ResponseWriter, r *http.Request) {
 	err = h.repo.CreateBook(&b)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(ResponseInfo{
+		json.NewEncoder(w).Encode(ResponseError{
 			Status: http.StatusInternalServerError,
-			Data:   err,
+			Data:   err.Error(),
 		})
 		return
 	}
@@ -171,7 +181,7 @@ func (h *handler) putBook(w http.ResponseWriter, r *http.Request) {
 	if err != nil || id <= 0 {
 		w.WriteHeader(http.StatusBadRequest)
 
-		json.NewEncoder(w).Encode(ResponseInfo{
+		json.NewEncoder(w).Encode(ResponseError{
 			Status: http.StatusBadRequest,
 			Data:   "error " + idParam,
 		})
@@ -181,7 +191,7 @@ func (h *handler) putBook(w http.ResponseWriter, r *http.Request) {
 	var b domain.Book
 	err = json.NewDecoder(r.Body).Decode(&b)
 	if err != nil {
-		json.NewEncoder(w).Encode(ResponseInfo{
+		json.NewEncoder(w).Encode(ResponseError{
 			Status: http.StatusBadRequest,
 			Data:   "error",
 		})
@@ -200,7 +210,7 @@ func (h *handler) putBook(w http.ResponseWriter, r *http.Request) {
 
 	if response == (domain.Book{}) {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ResponseInfo{
+		json.NewEncoder(w).Encode(ResponseError{
 			Status: http.StatusBadRequest,
 			Data:   "El libro no existe",
 		})
@@ -223,7 +233,7 @@ func (h *handler) updateBook(w http.ResponseWriter, r *http.Request) {
 	if err != nil || id <= 0 {
 		w.WriteHeader(http.StatusBadRequest)
 
-		json.NewEncoder(w).Encode(ResponseInfo{
+		json.NewEncoder(w).Encode(ResponseError{
 			Status: http.StatusBadRequest,
 			Data:   "error " + idParam,
 		})
@@ -233,7 +243,7 @@ func (h *handler) updateBook(w http.ResponseWriter, r *http.Request) {
 	foundBook, err := h.repo.GetBookByID(uint(id))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ResponseInfo{
+		json.NewEncoder(w).Encode(ResponseError{
 			Status: http.StatusBadRequest,
 			Data:   fmt.Sprintf("the book you are trying to modify does not exist. ID: %s", idParam),
 		})
@@ -243,7 +253,7 @@ func (h *handler) updateBook(w http.ResponseWriter, r *http.Request) {
 	bookRequestBody := make(map[string]interface{})
 	err = json.NewDecoder(r.Body).Decode(&bookRequestBody)
 	if err != nil {
-		json.NewEncoder(w).Encode(ResponseInfo{
+		json.NewEncoder(w).Encode(ResponseError{
 			Status: http.StatusBadRequest,
 			Data:   "error decoding request body",
 		})
@@ -253,9 +263,9 @@ func (h *handler) updateBook(w http.ResponseWriter, r *http.Request) {
 	err = h.repo.UpdateBookByParams(bookRequestBody, foundBook)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ResponseInfo{
+		json.NewEncoder(w).Encode(ResponseError{
 			Status: http.StatusBadRequest,
-			Data:   err,
+			Data:   err.Error(),
 		})
 		return
 	}
@@ -263,7 +273,7 @@ func (h *handler) updateBook(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(ResponseInfo{
 		Status: http.StatusOK,
-		Data:   foundBook,
+		Data:   *foundBook,
 	})
 }
 
@@ -276,7 +286,7 @@ func (h *handler) deleteBook(w http.ResponseWriter, r *http.Request) {
 	if err != nil || id <= 0 {
 		w.WriteHeader(http.StatusBadRequest)
 
-		json.NewEncoder(w).Encode(ResponseInfo{
+		json.NewEncoder(w).Encode(ResponseError{
 			Status: http.StatusBadRequest,
 			Data:   "error " + idParam,
 		})
@@ -290,7 +300,7 @@ func (h *handler) deleteBook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(ResponseInfo{
+	json.NewEncoder(w).Encode(ResponseError{
 		Status: http.StatusOK,
 		Data:   "Libro eliminado. ID: " + idParam,
 	})
